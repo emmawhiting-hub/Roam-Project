@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roam — AI Itinerary Builder for Budget Travelers</title>
+<style>
+  :root{
+    /* sunset palette — warm orange brand, magenta-pink accent, golden sun */
+    --teal:#f97316; --teal-d:#ea580c; --coral:#ec4899; --coral-d:#db2777;
+    --sun:#fbbf24; --ink:#3b2233; --slate:#7c5a6b; --mut:#b69aa8;
+    --line:#f3dbc9; --bg:#fff5ec; --card:#ffffff; --good:#16a34a;
+    --warm:#fff3e9;
+    --shadow:0 4px 16px rgba(124,42,80,.10); --shadow-lg:0 12px 32px rgba(124,42,80,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  svg.ic{width:1.05em;height:1.05em;display:inline-block;vertical-align:-0.16em;flex:none;stroke-width:2}
+  [data-ic]{display:inline-flex;align-items:center}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+
+  header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.85);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav{display:flex;align-items:center;gap:8px;height:64px}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:22px;
+    background:linear-gradient(120deg,var(--teal),var(--coral));-webkit-background-clip:text;
+    background-clip:text;color:transparent;margin-right:auto}
+  .logo span{font-size:24px}
+  .logo-mark{flex-shrink:0;display:block;filter:drop-shadow(0 2px 4px rgba(234,88,12,.28))}
+  .navbtn{padding:8px 16px;border-radius:999px;font-weight:600;font-size:14px;color:var(--slate)}
+  .navbtn.active{background:var(--teal);color:#fff}
+  .navbtn .badge{background:var(--coral);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;margin-left:6px;font-weight:700}
+  .navbtn-plus{color:#a6752f}
+  .navbtn-plus.active{background:linear-gradient(120deg,#f59e0b,#d97706);color:#fff}
+  .badge.plus-on{background:linear-gradient(120deg,#f59e0b,#d97706)}
+
+  .view{display:none;padding:32px 0 80px}
+  .view.active{display:block;animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .hero{background:linear-gradient(135deg,#3a1c71,#d76d77 48%,#ffaf7b);
+    border-radius:24px;padding:44px 36px;color:#fff;box-shadow:var(--shadow-lg);position:relative;overflow:visible}
+  .hero h1{font-size:34px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;max-width:560px}
+  .hero p{font-size:16px;opacity:.92;max-width:520px;margin-bottom:26px}
+  .panel{background:#fff;border-radius:18px;padding:22px;box-shadow:var(--shadow);color:var(--ink)}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;font-weight:700;color:var(--slate);margin-bottom:6px}
+  .field .opt{color:var(--mut);font-weight:500}
+  .budget-row{display:flex;align-items:center;border:2px solid var(--teal);border-radius:14px;padding:6px 14px;background:var(--warm)}
+  .budget-row .cur{font-size:26px;font-weight:800;color:var(--teal-d)}
+  .budget-row input{border:none;outline:none;font-size:26px;font-weight:800;width:100%;background:transparent;color:var(--ink)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  @media(max-width:680px){.grid3,.grid2{grid-template-columns:1fr}}
+  .inp{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:15px;outline:none;background:#fff;transition:border .15s}
+  .inp:focus{border-color:var(--teal)}
+  .linkbtn{background:none;border:none;color:var(--teal-d);font-weight:700;font-size:12px;cursor:pointer;padding:0 2px;text-decoration:underline}
+  .ac-wrap{position:relative}
+  .ac-menu{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);z-index:60;max-height:260px;overflow:auto;display:none}
+  .ac-menu.open{display:block}
+  .ac-item{display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;font-size:14px;border-bottom:1px solid var(--line)}
+  .ac-item:last-child{border-bottom:none}
+  .ac-item:hover,.ac-item.sel{background:var(--warm)}
+  .ac-item .ac-code{margin-left:auto;font-weight:800;color:var(--teal-d);font-size:12px;background:var(--warm);padding:2px 8px;border-radius:6px}
+  .ac-item .ac-sub{color:var(--mut);font-size:12px}
+  .ac-item .ic{color:var(--mut)}
+  .loading-wrap{text-align:center;padding:60px 20px;background:var(--card);border-radius:20px;box-shadow:var(--shadow)}
+  .spinner{width:42px;height:42px;border:4px solid var(--line);border-top-color:var(--teal);border-radius:50%;margin:0 auto 16px;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .chip{padding:7px 14px;border-radius:999px;background:#f1f5f9;font-size:13px;font-weight:600;color:var(--slate);border:1px solid transparent;transition:.15s}
+  .chip:hover{border-color:var(--teal);color:var(--teal-d)}
+  .chip.on{background:var(--teal);color:#fff}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--coral);color:#fff;font-weight:700;font-size:16px;padding:14px 26px;border-radius:14px;box-shadow:0 6px 16px rgba(244,63,94,.3);transition:.15s;width:100%}
+  .btn:hover{background:var(--coral-d);transform:translateY(-1px)}
+  .btn.ghost{background:#fff;color:var(--teal-d);border:1.5px solid var(--teal);box-shadow:none}
+  .btn.ghost:hover{background:var(--warm)}
+  .btn.sm{width:auto;font-size:14px;padding:9px 16px}
+  .btn.tiny{width:auto;font-size:13px;padding:7px 13px;border-radius:10px}
+
+  .how{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:28px}
+  .how .card{background:var(--card);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+  .how .ic{color:var(--teal-d);margin-bottom:8px}
+  .how .ic svg{width:26px;height:26px}
+  .how h3{font-size:15px;margin-bottom:4px}
+  .how p{font-size:13px;color:var(--slate)}
+
+  .sec-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+  .sec-head h2{font-size:26px;font-weight:800;letter-spacing:-.4px}
+  .sec-head p{color:var(--slate);font-size:14px}
+  .options{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:760px){.options{grid-template-columns:1fr}}
+  .opt-card{background:var(--card);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;transition:.18s;border:2px solid transparent}
+  .opt-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+  .opt-banner{height:96px;display:flex;align-items:center;justify-content:center;color:#fff;position:relative}
+  .opt-banner .banner-ic svg{width:46px;height:46px;opacity:.92}
+  .opt-tag{position:absolute;top:10px;left:10px;background:rgba(255,255,255,.92);color:var(--ink);font-size:11px;font-weight:800;padding:4px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px}
+  .opt-date{position:absolute;bottom:10px;right:10px;background:rgba(15,23,42,.45);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px}
+  .opt-body{padding:16px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .opt-body h3{font-size:18px;font-weight:800}
+  .opt-body .meta{font-size:13px;color:var(--mut)}
+  .line-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slate)}
+  .line-item .e{width:20px;text-align:center}
+  .price-row{display:flex;align-items:baseline;justify-content:space-between;margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
+  .price-row .tot{font-size:24px;font-weight:800;color:var(--teal-d)}
+  .price-row .of{font-size:12px;color:var(--mut)}
+  .under{font-size:12px;font-weight:700;color:var(--good)}
+  .under.overb{color:var(--coral-d)}
+  .ptag{font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;vertical-align:middle;padding:2px 7px;border-radius:999px;background:#f1f5f9;color:var(--mut)}
+  .ptag.live{background:#dcfce7;color:#15803d}
+  .hint{font-size:11px;color:var(--mut);margin-top:5px}
+  .gtk{padding:6px 20px 16px}
+  .gtk-row{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .gtk-row:first-child{border-top:none}
+  .gtk-ic{width:32px;height:32px;border-radius:9px;background:var(--warm);color:var(--teal-d);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .gtk-c{flex:1;font-size:13px;color:var(--slate);line-height:1.5}
+  .gtk-c b{color:var(--ink)}
+  .gtk-c a{color:var(--teal-d);font-weight:600;text-decoration:none}
+  .gtk-c select{font-family:inherit;font-size:12px;border:1px solid var(--line);border-radius:8px;padding:3px 6px;margin:0 2px}
+  .flexgrid{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .flexday{border:1.5px solid var(--line);border-radius:10px;padding:6px 9px;text-align:center;font-size:12px;min-width:78px}
+  .flexday.best{border-color:var(--good);background:#f0fdf4}
+  .flexday .fd{font-weight:700;color:var(--ink)}
+  .flexday .fp{font-weight:800;color:var(--teal-d);font-size:13px}
+  .flexday .fs{font-size:10px;color:var(--good);font-weight:700}
+  .flexbtn{font-size:12px;font-weight:700;color:var(--teal-d);background:var(--warm);padding:6px 11px;border-radius:9px}
+  .pp{font-size:11px;color:var(--mut);margin-top:1px}
+  .ptag.wait{background:var(--warm);color:var(--teal-d);animation:pulse 1.1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+  .detail-grid{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+  @media(max-width:860px){.detail-grid{grid-template-columns:1fr}}
+  .block{background:var(--card);border-radius:18px;box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden}
+  .block-h{display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .block-h .e{font-size:22px}
+  .block-h h3{font-size:16px;font-weight:800;flex:1}
+  .pick{display:flex;align-items:center;gap:14px;padding:16px 20px}
+  .pick .thumb{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;background:var(--warm);flex-shrink:0}
+  .pick .info{flex:1}
+  .pick .info .t{font-weight:700;font-size:15px}
+  .pick .info .s{font-size:13px;color:var(--slate)}
+  .pick .info .s a{color:var(--teal-d);text-decoration:none;font-weight:600}
+  .pick .info .s a:hover{text-decoration:underline}
+  .pick .pr{font-weight:800;color:var(--ink);font-size:16px;text-align:right}
+  .pick .pr small{display:block;font-weight:500;color:var(--mut);font-size:11px}
+  .act-list .pick{border-top:1px solid var(--line)}
+  .summary{position:sticky;top:84px}
+  .summary .row{display:flex;justify-content:space-between;font-size:14px;padding:7px 0;color:var(--slate)}
+  .summary .row.big{font-size:20px;font-weight:800;color:var(--ink);border-top:2px solid var(--line);margin-top:6px;padding-top:14px}
+  .bar{height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin:10px 0 4px}
+  .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--sun),var(--teal))}
+  .bar.over > i{background:linear-gradient(90deg,var(--sun),var(--coral))}
+
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+  .modal-bg.open{display:flex;animation:fade .2s ease}
+  .modal{background:#fff;border-radius:20px;max-width:560px;width:100%;max-height:86vh;overflow:auto;box-shadow:var(--shadow-lg)}
+  .modal-h{display:flex;align-items:center;padding:20px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+  .modal-h h3{font-size:18px;font-weight:800;flex:1}
+  .modal-h .x{font-size:24px;color:var(--mut);width:32px;height:32px;border-radius:8px}
+  .modal-h .x:hover{background:#f1f5f9}
+  .modal-body{padding:18px 22px}
+  .alt{display:flex;align-items:center;gap:14px;padding:14px;border:1.5px solid var(--line);border-radius:14px;margin-bottom:10px;transition:.15s}
+  .alt:hover{border-color:var(--teal);background:var(--warm)}
+  .alt.sel{border-color:var(--teal);background:var(--warm)}
+  .alt .thumb{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;background:#fff}
+  .alt .info{flex:1}
+  .alt .info .t{font-weight:700;font-size:14px}
+  .alt .info .s{font-size:12px;color:var(--slate)}
+  .alt .pr{font-weight:800;font-size:15px}
+
+  .empty{text-align:center;padding:70px 20px;background:var(--card);border-radius:20px;box-shadow:var(--shadow)}
+  .empty .e{font-size:54px;margin-bottom:10px;color:var(--teal-d);display:flex;justify-content:center}
+  .empty h2{font-size:22px;margin-bottom:6px}
+  .empty p{color:var(--slate);max-width:380px;margin:0 auto 20px}
+  .trip-tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .trip-pill{display:inline-flex;align-items:center;gap:9px;padding:8px 12px 8px 15px;border-radius:999px;background:#fff;border:1.5px solid var(--line);font-weight:700;font-size:14px;color:var(--slate);box-shadow:var(--shadow);transition:.15s}
+  .trip-pill:hover{border-color:var(--teal)}
+  .trip-pill.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .trip-pill .x{font-size:16px;line-height:1;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;opacity:.65}
+  .trip-pill .x:hover{background:rgba(0,0,0,.14);opacity:1}
+  .trip-pill.add{background:transparent;border-style:dashed;color:var(--teal-d);box-shadow:none;padding:8px 15px}
+  .trip-pill.add:hover{background:var(--warm)}
+  .itin-head{background:linear-gradient(135deg,var(--teal-d),var(--coral));border-radius:20px;padding:26px 28px;color:#fff;box-shadow:var(--shadow-lg);margin-bottom:18px}
+  .itin-head h2{font-size:26px;font-weight:800}
+  .itin-head .sub{opacity:.92;margin-top:4px}
+  .itin-head .stats{display:flex;gap:26px;margin-top:16px;flex-wrap:wrap}
+  .itin-head .stats div .n{font-size:20px;font-weight:800}
+  .itin-head .stats div .l{font-size:12px;opacity:.85}
+  .callout{background:var(--warm);border:1px solid #ffd9b3;border-radius:14px;padding:13px 16px;font-size:13px;color:#b45309;margin-bottom:18px;display:flex;gap:10px;align-items:flex-start}
+  .callout b{color:#92400e}
+  .day{background:var(--card);border-radius:16px;box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+  .day-h{padding:14px 20px;font-weight:800;background:#f8fafc;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+  .day-h .num{background:var(--teal);color:#fff;width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .day-h .dt{font-weight:600;font-size:13px;color:var(--slate)}
+  .day-ctrl{margin-left:auto;display:flex;gap:6px}
+  .day-ctrl .dt{margin-left:0}
+  .mvbtn{width:26px;height:26px;border-radius:8px;background:#fff;border:1px solid var(--line);color:var(--teal-d);font-size:13px;font-weight:800;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:.15s}
+  .mvbtn:hover:not(:disabled){background:var(--warm);border-color:var(--teal)}
+  .mvbtn:disabled{opacity:.3;cursor:not-allowed}
+  .ev-mv{display:inline-flex;gap:5px;margin-left:auto;align-self:center}
+  .ev-mv .mvbtn{width:24px;height:24px;font-size:12px}
+  .ev{align-items:center}
+  .ev{display:flex;gap:14px;padding:14px 20px;border-top:1px solid var(--line)}
+  .ev:first-of-type{border-top:none}
+  .ev .e{font-size:22px;width:30px;text-align:center}
+  .ev .c{flex:1}
+  .ev .c .t{font-weight:700;font-size:15px}
+  .ev .c .s{font-size:13px;color:var(--slate)}
+  .ev-acts{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
+  .ev-acts a,.ev-acts button{font-size:12px;font-weight:700;padding:6px 12px;border-radius:9px;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+  .bookbtn{background:var(--teal);color:#fff}
+  .bookbtn:hover{background:var(--teal-d)}
+  .viewlink{background:var(--warm);color:var(--teal-d)}
+  .viewlink:hover{background:#ffe3cc}
+  .del{background:#fff;color:var(--coral-d);border:1px solid var(--line)}
+  .del:hover{background:#fff1f2;border-color:var(--coral)}
+  .day-foot{padding:10px 20px;border-top:1px dashed var(--line)}
+  .addact{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--teal-d);padding:6px 12px;border-radius:9px;background:var(--warm)}
+  .addact:hover{background:#ffe3cc}
+  .addact .ic{width:.95em;height:.95em}
+  .act-pick{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--line);border-radius:14px;margin-bottom:10px}
+  .act-pick .thumb{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--warm);color:var(--teal-d);flex-shrink:0}
+  .act-pick .info{flex:1;min-width:0}
+  .act-pick .info .t{font-weight:700;font-size:14px}
+  .act-pick .info .s{font-size:12px;color:var(--slate)}
+  .act-pick .info .s a{color:var(--teal-d);font-weight:600;text-decoration:none}
+  .act-pick .pr{font-weight:800;font-size:14px;white-space:nowrap}
+  .tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;height:fit-content;white-space:nowrap}
+  .tag.book{background:#dcfce7;color:#15803d}
+  .tag.todo{background:#fef3c7;color:#b45309}
+  .tag.ext{background:#e0e7ff;color:#4338ca}
+  .tag.info{background:#f1f5f9;color:var(--slate)}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:13px 22px;border-radius:12px;font-weight:600;font-size:14px;box-shadow:var(--shadow-lg);z-index:200;transition:.3s;opacity:0}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .note{font-size:12px;color:var(--mut);text-align:center;margin-top:30px}
+  .site-foot{padding:22px 20px 56px;text-align:center;border-top:1px solid var(--line);margin-top:30px}
+  .site-foot p{max-width:700px;margin:0 auto;font-size:12px;color:var(--mut);line-height:1.6}
+  .site-foot b{color:var(--slate)}
+  .api-note{font-size:11px;color:var(--mut);background:#f8fafc;border:1px dashed var(--line);border-radius:10px;padding:7px 12px;margin-top:14px;display:flex;gap:6px;align-items:center}
+  .auth-tabs{display:flex;gap:6px;background:#f1f5f9;border-radius:12px;padding:4px;margin-bottom:18px}
+  .auth-tab{flex:1;padding:9px;border-radius:9px;font-weight:700;font-size:14px;color:var(--slate)}
+  .auth-tab.on{background:#fff;color:var(--teal-d);box-shadow:var(--shadow)}
+  .auth-err{background:#fff1f2;border:1px solid #fecdd3;color:var(--coral-d);font-size:13px;font-weight:600;border-radius:10px;padding:9px 12px;margin-bottom:12px}
+  .navbtn#nav-account .ic{vertical-align:-.2em}
+  .itin-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  @media print{
+    @page{margin:14mm}
+    header,.site-foot,.trip-tabs,.itin-tools,.callout,.sec-head .btn,.sec-head>div>p,
+    .ev-mv,.ev-acts,.day-foot,.day-ctrl .mvbtn,.toast,.modal-bg,.api-note{display:none !important}
+    body{background:#fff}
+    .view{display:none !important}
+    #view-itin{display:block !important}
+    .wrap{max-width:none;padding:0}
+    .itin-head{background:#fff !important;color:#000 !important;box-shadow:none;border:1px solid #ccc;border-radius:10px}
+    .itin-head .n,.itin-head h2{color:#000 !important}
+    .day{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
+    .ev{break-inside:avoid}
+    .tag{border:1px solid #ccc}
+  }
+
+  /* ---------------- ROAM+ PREMIUM ---------------- */
+  .plus-hero{background:linear-gradient(135deg,#7c2d12,#b45309 45%,#f59e0b);border-radius:24px;padding:40px 36px;color:#fff;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+  .plus-hero h1{font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:8px;max-width:540px}
+  .plus-hero p{font-size:15px;opacity:.92;max-width:520px}
+  .plus-price{display:flex;align-items:baseline;gap:8px;margin:18px 0 6px}
+  .plus-price .amt{font-size:38px;font-weight:800}
+  .plus-price .per{font-size:14px;opacity:.85}
+  .plus-cta{margin-top:14px;max-width:280px}
+  .plus-cta.member{background:#fff;color:#b45309}
+  .plus-note{font-size:12px;opacity:.8;margin-top:10px}
+  .plus-badge-lg{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:5px 14px;font-size:12px;font-weight:700;margin-bottom:14px}
+  .plus-features{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:28px}
+  @media(max-width:680px){.plus-features{grid-template-columns:1fr}}
+  .plus-feat{background:var(--card);border-radius:16px;padding:18px;box-shadow:var(--shadow);display:flex;gap:12px}
+  .plus-feat .fic{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#fde68a,#f59e0b);color:#7c2d12;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .plus-feat h4{font-size:14px;margin-bottom:3px}
+  .plus-feat p{font-size:12.5px;color:var(--slate);line-height:1.5}
+  .cmp-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);margin-top:28px}
+  .cmp-table th,.cmp-table td{padding:12px 16px;text-align:center;font-size:13px;border-bottom:1px solid var(--line)}
+  .cmp-table th{background:var(--warm);font-size:13px}
+  .cmp-table td:first-child,.cmp-table th:first-child{text-align:left;font-weight:600;color:var(--ink)}
+  .cmp-table tr:last-child td{border-bottom:none}
+  .cmp-table .yes{color:var(--good);font-weight:800}
+  .cmp-table .no{color:var(--mut)}
+  .cmp-table th.plus-col{color:#b45309}
+  .plan-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--slate);margin:2px 0 14px;padding:8px 12px;background:var(--warm);border-radius:10px}
+  .plan-line b{color:var(--ink)}
+  .plan-line a,.plan-line button.linktxt{color:var(--teal-d);font-weight:700;text-decoration:underline;background:none;border:none;font-size:13px;cursor:pointer;padding:0}
+  .sponsored-tag{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.92);color:#92400e;font-size:10px;font-weight:800;padding:4px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px}
+  .adfree-line{font-size:12.5px;color:var(--slate);margin:-8px 0 14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .adfree-line a,.adfree-line button.linktxt{color:var(--teal-d);font-weight:700;text-decoration:underline;background:none;border:none;font-size:12.5px;cursor:pointer;padding:0}
+  .adfree-line.on{color:var(--good);font-weight:700}
+  .fee-line{font-size:12px;color:var(--mut);margin-top:8px;padding-top:8px;border-top:1px dashed var(--line)}
+  .fee-line.waived{color:var(--good);font-weight:700}
+  .fee-line a,.fee-line button.linktxt{color:var(--teal-d);font-weight:700;text-decoration:underline;background:none;border:none;font-size:12px;cursor:pointer;padding:0}
+  .swap-cap{font-size:11.5px;color:var(--mut);padding:0 20px 10px}
+  .swap-cap.unlimited{color:var(--good);font-weight:700}
+  .swap-cap a,.swap-cap button.linktxt{color:var(--teal-d);font-weight:700;text-decoration:underline;background:none;border:none;font-size:11.5px;cursor:pointer;padding:0}
+</style>
+</head>
+<body>
+<header><div class="wrap"><nav>
+  <div class="logo">
+    <svg class="logo-mark" width="34" height="34" viewBox="0 0 40 40" aria-label="Roam" role="img">
+      <defs>
+        <linearGradient id="roamSky" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#f97316"/><stop offset=".55" stop-color="#ec4899"/><stop offset="1" stop-color="#7c3aed"/>
+        </linearGradient>
+      </defs>
+      <circle cx="20" cy="20" r="19" fill="url(#roamSky)"/>
+      <circle cx="20" cy="20" r="19" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="1.5"/>
+      <!-- paper plane -->
+      <path d="M32 9 L8.5 18.2 L18 21 Z" fill="#ffffff"/>
+      <path d="M32 9 L18 21 L21.4 31 Z" fill="#ffe2cc"/>
+      <path d="M18 21 L32 9 L21.4 31" fill="none" stroke="#db2777" stroke-opacity=".35" stroke-width="1" stroke-linejoin="round"/>
+    </svg>
+    Roam</div>
+  <button class="navbtn active" id="nav-home" onclick="goPlan()">Plan a trip</button>
+  <button class="navbtn" id="nav-itin" onclick="go('itin')">My Itinerary <span class="badge" id="itinBadge" style="display:none">1</span></button>
+  <button class="navbtn navbtn-plus" id="nav-premium" onclick="go('premium')"><span data-ic="sparkle"></span> Roam+ <span class="badge plus-on" id="memberBadge" style="display:none">Member</span></button>
+  <button class="navbtn" id="nav-account" onclick="go('account')"><span data-ic="user"></span> <span id="navAccountLabel">Account</span></button>
+</nav></div></header>
+
+<!-- ============ HOME ============ -->
+<section class="view active" id="view-home"><div class="wrap">
+  <div class="hero">
+    <h1>Tell us your budget. We'll plan the whole trip.</h1>
+    <p>Roam's AI builds complete itineraries for budget travelers — smart flights, well-rated cheap hotels, and activities worth doing. Adjust anything you like.</p>
+    <div class="panel">
+      <div class="field">
+        <label>What's your budget <u>per person</u>? <span style="color:var(--coral)">*</span></label>
+        <div class="budget-row"><span class="cur">$</span>
+          <input id="budget" type="number" value="1200" min="100" step="50" placeholder="1200"></div>
+        <div class="hint">Per person — we multiply it by the number of travelers for the trip total.</div>
+      </div>
+      <div class="field">
+        <label>Leaving from <span style="color:var(--coral)">*</span></label>
+        <div class="ac-wrap">
+          <input class="inp" id="origin" placeholder="e.g. New York (JFK)" value="New York (JFK)" autocomplete="off">
+          <div class="ac-menu" id="acOrigin"></div>
+        </div>
+      </div>
+      <div class="grid3">
+        <div class="field">
+          <label>Destination <span class="opt">(optional)</span></label>
+          <div class="ac-wrap">
+            <input class="inp" id="dest" placeholder="City, airport, or country" autocomplete="off">
+            <div class="ac-menu" id="acDest"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Depart date <span class="opt">(optional)</span> <button type="button" class="linkbtn" id="clearDate" onclick="$('when').value='';$('when').blur()">Clear</button></label>
+          <input class="inp" id="when" type="date">
+          <div class="hint">Leave blank and we'll scan the next few months for the cheapest dates to fly.</div>
+        </div>
+        <div class="field">
+          <label>Trip length <span class="opt">(optional)</span></label>
+          <select class="inp" id="nights">
+            <option value="0">AI decides</option>
+            <option value="2">Weekend (2 nights)</option>
+            <option value="3">Long weekend (3)</option>
+            <option value="4" selected>Short trip (4)</option>
+            <option value="7">1 week (7)</option>
+            <option value="10">10 nights</option>
+            <option value="14">2 weeks (14)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Travelers</label>
+          <select class="inp" id="travelers">
+            <option value="1">1 traveler</option>
+            <option value="2">2 travelers</option>
+            <option value="3">3 travelers</option>
+            <option value="4">4 travelers</option>
+            <option value="5">5 travelers</option>
+            <option value="6">6 travelers</option>
+            <option value="7">7 travelers</option>
+            <option value="8">8 travelers</option>
+          </select>
+          <div class="hint">Hotels assume 2 people per room.</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Vibe <span class="opt">(optional)</span></label>
+        <div class="chips" id="vibes">
+          <button class="chip" data-v="beach"><span data-ic="beach"></span> Beach</button>
+          <button class="chip" data-v="city"><span data-ic="city"></span> City</button>
+          <button class="chip" data-v="adventure"><span data-ic="mountain"></span> Adventure</button>
+          <button class="chip" data-v="culture"><span data-ic="landmark"></span> Culture</button>
+          <button class="chip" data-v="food"><span data-ic="dining"></span> Food</button>
+        </div>
+      </div>
+      <button class="btn" onclick="generate()"><span data-ic="sparkle"></span> Generate my trips</button>
+      <div class="api-note"><span data-ic="bolt"></span> Live flight & hotel prices via Google (SerpApi) when the local server is running (<b>npm start</b>). Opened as a file, prices shown are estimates.</div>
+    </div>
+  </div>
+  <div class="how">
+    <div class="card"><div class="ic" data-ic="wallet"></div><h3>Set a budget</h3><p>One number. We fit flights, stay, and activities inside it.</p></div>
+    <div class="card"><div class="ic" data-ic="bot"></div><h3>AI builds options</h3><p>Three ready-to-book trips for your exact dates.</p></div>
+    <div class="card"><div class="ic" data-ic="check"></div><h3>Book & track</h3><p>Book each piece on our partners, confirm it, done.</p></div>
+  </div>
+</div></section>
+
+<!-- ============ RESULTS ============ -->
+<section class="view" id="view-results"><div class="wrap">
+  <div class="sec-head">
+    <div><h2 id="resTitle">Your trip options</h2><p id="resSub"></p></div>
+    <button class="btn ghost sm" onclick="go('home')">← Change search</button>
+  </div>
+  <div id="resPlanLine" class="adfree-line"></div>
+  <div id="resBudgetMsg" class="callout" style="display:none;border-color:#fcd9b6;background:#fff4e6;color:#b45309"></div>
+  <div id="optionsLoading" class="loading-wrap" style="display:none"><div class="spinner"></div><div id="loadingMsg" style="color:var(--slate);font-weight:600">Finding live flight &amp; hotel prices…</div></div>
+  <div class="options" id="optionsGrid"></div>
+  <p class="note"><b>Live</b> = real Google Flights/Hotels price for your dates · <b>est.</b> = sample price (activities are always sample estimates). Tap a trip to customize.</p>
+</div></section>
+
+<!-- ============ DETAIL ============ -->
+<section class="view" id="view-detail"><div class="wrap">
+  <div class="sec-head">
+    <div><h2 id="detTitle"></h2><p id="detSub"></p></div>
+    <button class="btn ghost sm" onclick="go('results')">← All options</button>
+  </div>
+  <div class="detail-grid">
+    <div>
+      <div id="swapCapLine" class="swap-cap"></div>
+      <div class="block">
+        <div class="block-h"><span class="e" data-ic="plane"></span><h3>Flight</h3>
+          <button class="btn ghost tiny" onclick="openSwap('flight')">Browse / swap</button></div>
+        <div id="flightPick"></div>
+      </div>
+      <div class="block">
+        <div class="block-h"><span class="e" data-ic="hotel"></span><h3>Hotel</h3>
+          <button class="btn ghost tiny" onclick="openSwap('hotel')">Browse / swap</button></div>
+        <div id="hotelPick"></div>
+      </div>
+      <div class="block">
+        <div class="block-h"><span class="e" data-ic="ticket"></span><h3>Activities</h3>
+          <button class="btn ghost tiny" onclick="openSwap('activity')">Add / browse</button></div>
+        <div id="actList" class="act-list"></div>
+      </div>
+      <div class="block">
+        <div class="block-h"><span class="e" data-ic="compass"></span><h3>Good to know</h3></div>
+        <div class="gtk">
+          <div class="gtk-row"><div class="gtk-ic" data-ic="beach"></div><div class="gtk-c" id="weatherBox">Loading typical weather…</div></div>
+          <div class="gtk-row"><div class="gtk-ic" data-ic="calendar"></div><div class="gtk-c" id="flexBox"></div></div>
+          <div class="gtk-row"><div class="gtk-ic" data-ic="user"></div><div class="gtk-c" id="entryBox"></div></div>
+          <div class="gtk-row"><div class="gtk-ic" data-ic="lock"></div><div class="gtk-c" id="plusPerkBox"></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="block summary" style="padding:20px">
+        <h3 style="font-size:16px;margin-bottom:2px">Trip summary</h3>
+        <div id="sumDates" style="font-size:12px;color:var(--mut);margin-bottom:8px"></div>
+        <div class="row"><span>✈️ Flight</span><span id="sFlight">$0</span></div>
+        <div class="row"><span>🏨 Hotel</span><span id="sHotel">$0</span></div>
+        <div class="row"><span>🎟️ Activities</span><span id="sAct">$0</span></div>
+        <div class="row" id="sFeeRow"><span id="sFeeLabel">Booking-assistance fee</span><span id="sFee">$0</span></div>
+        <div class="row big"><span>Total</span><span id="sTotal">$0</span></div>
+        <div class="row" id="ppRow" style="display:none;font-size:13px;color:var(--slate)"><span>Per person</span><span id="sPerPerson">$0</span></div>
+        <div class="bar" id="bar"><i id="barFill" style="width:0%"></i></div>
+        <div class="row" style="font-size:13px"><span id="budgetLabel">Budget $0</span><span id="leftLabel" class="under"></span></div>
+        <div id="sumNote" class="pp" style="display:none;text-align:left;margin-top:8px"></div>
+        <button class="btn" style="margin-top:16px" onclick="bookTrip()"><span data-ic="bookmark"></span> Add trip to itinerary</button>
+        <button class="btn ghost" style="margin-top:10px" onclick="go('results')">See other options</button>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ ITINERARY ============ -->
+<section class="view" id="view-itin"><div class="wrap">
+  <div id="itinEmpty" class="empty">
+    <div class="e" data-ic="map"></div><h2>No itinerary yet</h2>
+    <p>Generate a trip and add it — your day-by-day plan lives here. Already booked something elsewhere? Add it manually.</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn sm" onclick="go('home')">Plan a trip</button>
+      <button class="btn ghost sm" onclick="openExternal()">+ Add external booking</button>
+    </div>
+  </div>
+  <div id="itinContent" style="display:none">
+    <div id="tripTabs" class="trip-tabs"></div>
+    <div class="itin-head">
+      <h2 id="itinDest"></h2>
+      <div class="sub" id="itinDates"></div>
+      <div class="stats">
+        <div><div class="n" id="itinTotal"></div><div class="l">Trip cost</div></div>
+        <div><div class="n" id="itinLeft"></div><div class="l">vs budget</div></div>
+        <div><div class="n" id="itinCount"></div><div class="l">Booked</div></div>
+      </div>
+      <div id="itinFeeNote" style="font-size:12px;opacity:.9;margin-top:10px"></div>
+    </div>
+    <div class="itin-tools">
+      <button class="btn ghost sm" onclick="exportPDF()"><span data-ic="map"></span> Download PDF</button>
+      <button class="btn ghost sm" onclick="shareTrip()"><span data-ic="plane"></span> Share link</button>
+    </div>
+    <div class="callout"><span data-ic="lock"></span> <div><b>How booking works:</b> Roam plans the trip; you complete each booking on our partner site (Google Flights, Booking.com, Viator) at the price shown. Tap <b>Book</b>, finish on their site, then confirm it here to track it. Tap <b>Delete</b> to remove anything.</div></div>
+    <div class="sec-head">
+      <div><h2 style="font-size:20px">Day by day</h2><p>Use the ↑ ↓ arrows to reorder days or move an item to another day. Each link opens the exact flight, hotel, or tour.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost sm" onclick="openActivityPicker()"><span data-ic="ticket"></span> Add activity</button>
+        <button class="btn ghost sm" onclick="openExternal()">+ Add external booking</button>
+      </div>
+    </div>
+    <div id="dayList"></div>
+  </div>
+</div></section>
+
+<!-- ============ ACCOUNT ============ -->
+<section class="view" id="view-account"><div class="wrap" style="max-width:520px">
+  <div id="acctPlanLine" class="plan-line"></div>
+  <div id="acctLoggedOut">
+    <div class="sec-head"><div><h2>Your account</h2><p>Create an account to save your itineraries and find them on any device.</p></div></div>
+    <div class="panel">
+      <div class="auth-tabs">
+        <button class="auth-tab on" id="tabLogin" onclick="setAuthTab('login')">Log in</button>
+        <button class="auth-tab" id="tabSignup" onclick="setAuthTab('signup')">Create account</button>
+      </div>
+      <div id="signupFields" style="display:none">
+        <div class="field"><label>Name</label><input class="inp" id="suName" placeholder="Your name" autocomplete="name"></div>
+      </div>
+      <div class="field"><label>Email</label><input class="inp" id="auEmail" type="email" placeholder="you@email.com" autocomplete="email"></div>
+      <div class="field"><label>Password</label><input class="inp" id="auPass" type="password" placeholder="At least 6 characters" autocomplete="current-password"></div>
+      <div id="authError" class="auth-err" style="display:none"></div>
+      <button class="btn" id="authSubmit" onclick="submitAuth()">Log in</button>
+      <div class="api-note" id="acctServerNote" style="display:none"><span data-ic="bolt"></span> Accounts need the local server running (<b>npm start</b>). Opened as a plain file, sign-in is disabled.</div>
+    </div>
+  </div>
+  <div id="acctLoggedIn" style="display:none">
+    <div class="itin-head" style="margin-bottom:18px">
+      <h2 id="acctName"></h2><div class="sub" id="acctEmail"></div>
+    </div>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 14px"><span style="color:var(--slate);font-weight:600">Saved itineraries</span><b id="acctTrips" style="font-size:20px">0</b></div>
+      <button class="btn" onclick="saveTrips(true)"><span data-ic="check"></span> Save my current itineraries</button>
+      <button class="btn ghost" style="margin-top:10px" onclick="logout()"><span data-ic="logout"></span> Log out</button>
+      <p class="note" style="margin-top:14px">Your itineraries also save automatically as you add or edit trips.</p>
+    </div>
+  </div>
+</div></section>
+
+<!-- ============ ROAM+ ============ -->
+<section class="view" id="view-premium"><div class="wrap" style="max-width:820px">
+  <div class="plus-hero">
+    <div class="plus-badge-lg"><span data-ic="sparkle"></span> Roam+ Membership</div>
+    <h1>Everything's still full price. This just makes the trip smoother.</h1>
+    <p>Roam never marks up a flight, hotel, or tour — that doesn't change. Roam+ is a membership for travelers who want a few extras layered on top, and it's how Roam stays in business without touching the price you pay partners.</p>
+    <div class="plus-price"><span class="amt" id="plusAmt">$59</span><span class="per">/year (~$5/month)</span></div>
+    <button class="btn plus-cta" id="plusCtaBtn" onclick="toggleMembership()">Upgrade to Roam+</button>
+    <div class="plus-note" id="plusNote">Demo only — this is a class project prototype, no real payment is processed.</div>
+  </div>
+
+  <div class="plus-features">
+    <div class="plus-feat"><div class="fic"><span data-ic="wallet"></span></div><div><h4>Zero booking-assistance fees</h4><p>Free plan trips carry a small per-trip service fee. Roam+ waives it entirely.</p></div></div>
+    <div class="plus-feat"><div class="fic"><span data-ic="lock"></span></div><div><h4>Price-drop protection</h4><p>If your flight or hotel rate drops after you book, Roam+ credits you the difference.</p></div></div>
+    <div class="plus-feat"><div class="fic"><span data-ic="calendar"></span></div><div><h4>Flexible-date overlay</h4><p>Free cancellation / date-change coverage layered on top of eligible bookings.</p></div></div>
+    <div class="plus-feat"><div class="fic"><span data-ic="bolt"></span></div><div><h4>Early access to flash deals</h4><p>See partner discount codes and limited-time fares before free-plan users do.</p></div></div>
+    <div class="plus-feat"><div class="fic"><span data-ic="swap"></span></div><div><h4>Unlimited trip customization</h4><p>Free plan caps flight/hotel/activity swaps per trip. Roam+ removes the cap.</p></div></div>
+    <div class="plus-feat"><div class="fic"><span data-ic="globe"></span></div><div><h4>Ad-free, unbiased results</h4><p>Free plan may show a sponsored placement among your options. Roam+ never does.</p></div></div>
+    <div class="plus-feat"><div class="fic"><span data-ic="user"></span></div><div><h4>Group trip &amp; shared itineraries</h4><p>Share an editable itinerary with travel companions, not just a read-only link.</p></div></div>
+    <div class="plus-feat"><div class="fic"><span data-ic="sparkle"></span></div><div><h4>Priority human support</h4><p>Jump the queue if you ever need help from a real person.</p></div></div>
+  </div>
+
+  <table class="cmp-table">
+    <thead><tr><th>Feature</th><th>Free</th><th class="plus-col">Roam+</th></tr></thead>
+    <tbody>
+      <tr><td>Flight, hotel &amp; tour prices</td><td>Same price as booking direct</td><td>Same price as booking direct</td></tr>
+      <tr><td>Booking-assistance fee</td><td class="no">$15 / trip</td><td class="yes">$0</td></tr>
+      <tr><td>Price-drop protection</td><td class="no">—</td><td class="yes">✓ Included</td></tr>
+      <tr><td>Search results</td><td class="no">May include sponsored placement</td><td class="yes">Ad-free, unbiased</td></tr>
+      <tr><td>Flight / hotel / activity swaps</td><td class="no">3 per trip</td><td class="yes">Unlimited</td></tr>
+      <tr><td>Flash deals &amp; discount codes</td><td class="no">—</td><td class="yes">Early access</td></tr>
+      <tr><td>Support</td><td class="no">Standard</td><td class="yes">Priority</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Roam+ is $59/year (~$5/month) and, alongside partner advertising, is how Roam earns revenue without marking up a single booking.</p>
+</div></section>
+
+<!-- SWAP MODAL -->
+<div class="modal-bg" id="swapModal"><div class="modal">
+  <div class="modal-h"><h3 id="swapTitle">Browse</h3><button class="x" onclick="closeModal('swapModal')">×</button></div>
+  <div class="modal-body" id="swapBody"></div>
+</div></div>
+
+<!-- ADD ACTIVITY MODAL -->
+<div class="modal-bg" id="actModal"><div class="modal">
+  <div class="modal-h"><h3 id="actModalTitle">Add an activity</h3><button class="x" onclick="closeModal('actModal')">×</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Add to which day?</label><select class="inp" id="actDay"></select></div>
+    <div id="actOptions"></div>
+    <div id="actBrowse" style="margin-top:6px"></div>
+  </div>
+</div></div>
+
+<!-- EXTERNAL BOOKING MODAL -->
+<div class="modal-bg" id="extModal"><div class="modal">
+  <div class="modal-h"><h3>Add a booking you made elsewhere</h3><button class="x" onclick="closeModal('extModal')">×</button></div>
+  <div class="modal-body">
+    <div class="field"><label>Type</label>
+      <select class="inp" id="extType">
+        <option value="plane|Flight">Flight</option>
+        <option value="hotel|Hotel">Hotel</option>
+        <option value="ticket|Activity">Activity</option>
+        <option value="train|Transport">Transport</option>
+        <option value="dining|Reservation">Reservation</option>
+      </select></div>
+    <div class="field"><label>Name / description</label>
+      <input class="inp" id="extName" placeholder="e.g. Ryanair FR1842 — Dublin to Lisbon"></div>
+    <div class="grid2">
+      <div class="field"><label>Which day?</label><select class="inp" id="extDay"></select></div>
+      <div class="field"><label>Cost (optional)</label>
+        <div class="budget-row" style="border-width:1px"><span class="cur" style="font-size:18px">$</span>
+          <input id="extCost" type="number" style="font-size:18px" placeholder="0"></div></div>
+    </div>
+    <div class="field"><label>Booking link <span class="opt">(optional)</span></label>
+      <input class="inp" id="extLink" placeholder="https://..."></div>
+    <button class="btn" onclick="addExternal()">Add to itinerary</button>
+  </div>
+</div></div>
+
+<!-- CONFIRM BOOKING MODAL -->
+<div class="modal-bg" id="confirmModal"><div class="modal" style="max-width:420px">
+  <div class="modal-body" style="text-align:center;padding:28px 26px">
+    <div style="font-size:42px;color:var(--teal-d);display:flex;justify-content:center" data-ic="sparkle"></div>
+    <h3 id="confirmTitle" style="font-size:19px;font-weight:800;margin:8px 0 6px"></h3>
+    <p id="confirmText" style="color:var(--slate);font-size:14px"></p>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn ghost" onclick="closeModal('confirmModal')">Not yet</button>
+      <button class="btn" onclick="confirmYes()">Yes, I booked it ✓</button>
+    </div>
+  </div>
+</div></div>
+
+<footer class="site-foot">
+  <p><b>All prices are estimates and subject to change.</b> Flight and hotel prices are pulled live from Google Flights and Google Hotels for your selected dates, but fares and rates change constantly — always confirm the final price on the booking site before you pay. Roam is a student project and does not process payments or complete bookings.</p>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="airports.js"></script>
+<script>
+/* ---------------- MOCK DATA (stands in for Amadeus / Travelpayouts / Viator) ---------------- */
+const DESTS = {
+  lisbon:{city:"Lisbon",country:"Portugal",emoji:"🇵🇹",iata:"LIS",grad:"linear-gradient(135deg,#f59e0b,#ef4444)",vibes:["beach","city","culture","food"],
+    flights:[{t:"TAP Air — 1 stop",s:"8h 15m · Economy",p:420},{t:"Ryanair — direct",s:"7h 05m · Basic",p:310},{t:"Lufthansa — 1 stop",s:"9h 40m · Economy",p:480}],
+    hotels:[{t:"Lisbon Destination Hostel",s:"Private room · 8.9 ★",p:55},{t:"Hotel Gat Rossio",s:"3-star · central · 8.6 ★",p:88},{t:"The Lumiares",s:"4-star boutique · 9.1 ★",p:165}],
+    acts:[{t:"Alfama walking & Fado tour",s:"3h · top rated",p:35,link:"https://www.viator.com/Lisbon/d538"},{t:"Sintra & Pena Palace day trip",s:"Full day",p:65,link:"https://www.viator.com/Lisbon/d538"},{t:"Belém pastéis food crawl",s:"2.5h",p:45,link:"https://www.viator.com/Lisbon/d538"},{t:"Tagus sunset sailing",s:"2h",p:40,link:"https://www.viator.com/Lisbon/d538"}]},
+  cdmx:{city:"Mexico City",country:"Mexico",emoji:"🇲🇽",iata:"MEX",grad:"linear-gradient(135deg,#10b981,#0ea5e9)",vibes:["city","culture","food"],
+    flights:[{t:"Volaris — direct",s:"4h 30m · Basic",p:240},{t:"Aeroméxico — direct",s:"4h 20m · Economy",p:330},{t:"United — 1 stop",s:"6h 50m · Economy",p:290}],
+    hotels:[{t:"Casa Pepe Hostel",s:"Private room · 9.0 ★",p:42},{t:"Hotel Histórico Central",s:"3-star · Zócalo · 8.7 ★",p:75},{t:"Hotel Carlota",s:"4-star design · 9.2 ★",p:150}],
+    acts:[{t:"Teotihuacán pyramids tour",s:"Full day",p:55,link:"https://www.viator.com/Mexico-City/d628"},{t:"Coyoacán & Frida Kahlo museum",s:"4h",p:38,link:"https://www.viator.com/Mexico-City/d628"},{t:"Street taco & mezcal night",s:"3h",p:50,link:"https://www.viator.com/Mexico-City/d628"},{t:"Xochimilco trajinera boats",s:"5h",p:45,link:"https://www.viator.com/Mexico-City/d628"}]},
+  bangkok:{city:"Bangkok",country:"Thailand",emoji:"🇹🇭",iata:"BKK",grad:"linear-gradient(135deg,#8b5cf6,#ec4899)",vibes:["city","culture","food","adventure"],
+    flights:[{t:"Scoot — 1 stop",s:"19h · Basic",p:560},{t:"EVA Air — 1 stop",s:"21h · Economy",p:680},{t:"China Airlines — 1 stop",s:"22h · Economy",p:610}],
+    hotels:[{t:"Lub d Bangkok Silom",s:"Private pod · 9.0 ★",p:30},{t:"Ibis Riverside",s:"3-star · river view · 8.5 ★",p:58},{t:"Chatrium Riverside",s:"5-star · 9.3 ★",p:120}],
+    acts:[{t:"Grand Palace & Wat Pho",s:"Half day",p:30,link:"https://www.viator.com/Bangkok/d343"},{t:"Floating market + train market",s:"Full day",p:48,link:"https://www.viator.com/Bangkok/d343"},{t:"Thai street-food tuk-tuk tour",s:"4h",p:42,link:"https://www.viator.com/Bangkok/d343"},{t:"Ayutthaya temples day trip",s:"Full day",p:55,link:"https://www.viator.com/Bangkok/d343"}]},
+  medellin:{city:"Medellín",country:"Colombia",emoji:"🇨🇴",iata:"MDE",grad:"linear-gradient(135deg,#22c55e,#eab308)",vibes:["city","adventure","culture"],
+    flights:[{t:"Avianca — 1 stop",s:"7h 30m · Economy",p:300},{t:"Spirit — 1 stop",s:"8h 10m · Basic",p:230},{t:"Copa — 1 stop",s:"8h · Economy",p:350}],
+    hotels:[{t:"Los Patios Hostel",s:"Private room · 9.1 ★",p:38},{t:"Hotel Du Parc Royal",s:"3-star · El Poblado · 8.6 ★",p:70},{t:"The Charlee",s:"5-star rooftop · 9.0 ★",p:140}],
+    acts:[{t:"Comuna 13 graffiti tour",s:"3h · top rated",p:28,link:"https://www.viator.com/Medellin/d4292"},{t:"Guatapé & El Peñol rock",s:"Full day",p:52,link:"https://www.viator.com/Medellin/d4292"},{t:"Coffee farm experience",s:"5h",p:45,link:"https://www.viator.com/Medellin/d4292"},{t:"Paragliding over the valley",s:"3h",p:60,link:"https://www.viator.com/Medellin/d4292"}]},
+  athens:{city:"Athens",country:"Greece",emoji:"🇬🇷",iata:"ATH",grad:"linear-gradient(135deg,#0ea5e9,#6366f1)",vibes:["beach","culture","food","city"],
+    flights:[{t:"Aegean — 1 stop",s:"11h · Economy",p:470},{t:"Norse — 1 stop",s:"12h · Basic",p:360},{t:"Lufthansa — 1 stop",s:"12h 30m · Economy",p:520}],
+    hotels:[{t:"City Circus Hostel",s:"Private room · 9.0 ★",p:48},{t:"Hotel Attalos",s:"3-star · Acropolis view · 8.5 ★",p:82},{t:"AthensWas Design",s:"5-star · 9.2 ★",p:170}],
+    acts:[{t:"Acropolis & Parthenon skip-line",s:"3h",p:40,link:"https://www.viator.com/Athens/d496"},{t:"Cape Sounion sunset trip",s:"4h",p:50,link:"https://www.viator.com/Athens/d496"},{t:"Greek cooking class",s:"3.5h",p:55,link:"https://www.viator.com/Athens/d496"},{t:"Hydra & Aegina island cruise",s:"Full day",p:75,link:"https://www.viator.com/Athens/d496"}]},
+  porto:{city:"Porto",country:"Portugal",emoji:"🇵🇹",iata:"OPO",grad:"linear-gradient(135deg,#fb923c,#be123c)",vibes:["city","culture","food"],
+    flights:[{t:"TAP Air — direct",s:"7h 30m · Economy",p:330},{t:"Ryanair — 1 stop",s:"9h · Basic",p:290},{t:"British Airways — 1 stop",s:"10h · Economy",p:450}],
+    hotels:[{t:"Gallery Hostel",s:"Private room · 9.1 ★",p:50},{t:"Hotel Aliados",s:"3-star · central · 8.6 ★",p:80},{t:"Torel Avantgarde",s:"5-star · river view · 9.3 ★",p:150}],
+    acts:[{t:"Port wine cellar tour & tasting",s:"2h",p:30,link:"https://www.viator.com/Porto/d4424"},{t:"Douro Valley wine day trip",s:"Full day",p:70,link:"https://www.viator.com/Porto/d4424"},{t:"Ribeira & six bridges cruise",s:"1h",p:25,link:"https://www.viator.com/Porto/d4424"},{t:"Livraria Lello & old town walk",s:"3h",p:35,link:"https://www.viator.com/Porto/d4424"}]},
+  oaxaca:{city:"Oaxaca",country:"Mexico",emoji:"🇲🇽",iata:"OAX",grad:"linear-gradient(135deg,#f43f5e,#f59e0b)",vibes:["culture","food","adventure"],
+    flights:[{t:"Viva Aerobus — 1 stop",s:"6h · Basic",p:270},{t:"Volaris — 1 stop",s:"6h 20m · Basic",p:290},{t:"Aeroméxico — 1 stop",s:"6h 40m · Economy",p:340}],
+    hotels:[{t:"Casa Angel Hostel",s:"Private room · 9.2 ★",p:35},{t:"Hotel Casa del Sótano",s:"3-star · centro · 8.8 ★",p:70},{t:"Grand Fiesta Americana",s:"4-star · 9.1 ★",p:140}],
+    acts:[{t:"Monte Albán ruins tour",s:"Half day",p:45,link:"https://www.viator.com/Oaxaca/d22138"},{t:"Mezcal distillery tour",s:"5h",p:50,link:"https://www.viator.com/Oaxaca/d22138"},{t:"Oaxaca food market crawl",s:"3h",p:40,link:"https://www.viator.com/Oaxaca/d22138"},{t:"Hierve el Agua springs",s:"Full day",p:55,link:"https://www.viator.com/Oaxaca/d22138"}]},
+  chiangmai:{city:"Chiang Mai",country:"Thailand",emoji:"🇹🇭",iata:"CNX",grad:"linear-gradient(135deg,#a855f7,#f472b6)",vibes:["culture","adventure","food"],
+    flights:[{t:"Scoot — 1 stop",s:"20h · Basic",p:600},{t:"AirAsia — 1 stop",s:"21h · Basic",p:640},{t:"EVA Air — 1 stop",s:"22h · Economy",p:720}],
+    hotels:[{t:"Stamps Backpackers",s:"Private room · 9.0 ★",p:22},{t:"Tha Pae Gate Hotel",s:"3-star · old city · 8.6 ★",p:45},{t:"Akyra Manor",s:"5-star design · 9.4 ★",p:130}],
+    acts:[{t:"Ethical elephant sanctuary day",s:"Full day",p:60,link:"https://www.viator.com/Chiang-Mai/d375"},{t:"Old city temple tour",s:"3h",p:25,link:"https://www.viator.com/Chiang-Mai/d375"},{t:"Thai cooking class & market",s:"4h",p:35,link:"https://www.viator.com/Chiang-Mai/d375"},{t:"Doi Suthep & Hmong village",s:"5h",p:40,link:"https://www.viator.com/Chiang-Mai/d375"}]},
+  cartagena:{city:"Cartagena",country:"Colombia",emoji:"🇨🇴",iata:"CTG",grad:"linear-gradient(135deg,#06b6d4,#f59e0b)",vibes:["beach","culture","food"],
+    flights:[{t:"Spirit — 1 stop",s:"7h · Basic",p:280},{t:"Avianca — 1 stop",s:"7h 20m · Economy",p:320},{t:"Copa — 1 stop",s:"7h 40m · Economy",p:360}],
+    hotels:[{t:"República Hostel",s:"Private room · 9.0 ★",p:30},{t:"Hotel Casa Baluarte",s:"3-star · old town · 8.7 ★",p:75},{t:"Casa San Agustín",s:"5-star · 9.4 ★",p:180}],
+    acts:[{t:"Walled city walking tour",s:"2.5h",p:25,link:"https://www.viator.com/Cartagena/d4172"},{t:"Rosario Islands boat day",s:"Full day",p:55,link:"https://www.viator.com/Cartagena/d4172"},{t:"Salsa night dance class",s:"2h",p:30,link:"https://www.viator.com/Cartagena/d4172"},{t:"Sunset bay cruise",s:"2h",p:40,link:"https://www.viator.com/Cartagena/d4172"}]},
+  santorini:{city:"Santorini",country:"Greece",emoji:"🇬🇷",iata:"JTR",grad:"linear-gradient(135deg,#3b82f6,#8b5cf6)",vibes:["beach","food","culture"],
+    flights:[{t:"Norse + ferry — 1 stop",s:"14h · Basic",p:470},{t:"Aegean — 1 stop",s:"13h · Economy",p:520},{t:"Lufthansa — 1 stop",s:"14h 30m · Economy",p:600}],
+    hotels:[{t:"Caveland Hostel",s:"Private cave room · 9.0 ★",p:55},{t:"Hotel Sole",s:"3-star · Fira · 8.6 ★",p:110},{t:"Grace Santorini",s:"5-star caldera · 9.5 ★",p:280}],
+    acts:[{t:"Caldera catamaran cruise",s:"5h",p:90,link:"https://www.viator.com/Santorini/d951"},{t:"Oia sunset & wine tasting",s:"4h",p:60,link:"https://www.viator.com/Santorini/d951"},{t:"Akrotiri ruins tour",s:"3h",p:45,link:"https://www.viator.com/Santorini/d951"},{t:"Volcano hike & hot springs",s:"Half day",p:50,link:"https://www.viator.com/Santorini/d951"}]}
+};
+
+/* ---------------- STATE ---------------- */
+let state={budget:0,nights:4,travelers:1,vibes:[],origin:"",startDate:null,options:[],current:null,trips:[],activeTrip:-1,booked:null,pending:null,lastPlan:'home',user:null,authMode:'login',member:false};
+const roomsFor=tv=>Math.max(1,Math.ceil((tv||1)/2));
+
+/* ---------------- ROAM+ MEMBERSHIP (mock — no real payment, demo toggle stored locally) ---------------- */
+const BOOKING_FEE=15;          // flat per-trip "booking-assistance fee" — waived for Roam+
+const FREE_SWAP_LIMIT=3;       // free plan: max flight/hotel/activity swaps per trip
+const MEMBER_PRICE="$59";
+try{state.member=localStorage.getItem('roamPlusMember')==='1';}catch(e){}
+function setMember(v){
+  state.member=v;
+  try{localStorage.setItem('roamPlusMember',v?'1':'0');}catch(e){}
+  updateMemberUI();
+}
+function toggleMembership(){
+  if(!state.member){
+    setMember(true);
+    toast('Welcome to Roam+! (demo — no real payment was charged)');
+  }else{
+    if(!confirm('Cancel your Roam+ membership? (This is a demo toggle — nothing was ever charged.)'))return;
+    setMember(false);
+    toast('Roam+ membership canceled');
+  }
+  renderOptionsIfVisible();renderDetailIfVisible();renderItinerary();renderAccount();
+}
+function renderOptionsIfVisible(){if(state.options&&state.options.length)renderOptions();}
+function renderDetailIfVisible(){if(state.current)renderDetail();}
+function updateMemberUI(){
+  const nb=$('nav-premium');const badge=$('memberBadge');
+  if(nb)nb.classList.toggle('is-member',state.member);
+  if(badge)badge.style.display=state.member?'inline-block':'none';
+  const cta=$('plusCtaBtn'),note=$('plusNote');
+  if(cta){
+    cta.textContent=state.member?"You're a Roam+ member — cancel":'Upgrade to Roam+';
+    cta.classList.toggle('member',state.member);
+    cta.classList.toggle('ghost',state.member);
+  }
+  if(note)note.textContent=state.member?"You're all set — booking fees are waived, swaps are unlimited, and results are ad-free.":'Demo only — this is a class project prototype, no real payment is processed.';
+}
+
+/* ---------------- HELPERS ---------------- */
+const $=id=>document.getElementById(id);
+
+/* ---------------- ICONS (inline SVG, inherit color via currentColor) ---------------- */
+const ICONS={
+  plane:'<path d="M17.8 19.2 16 11l3.5-3.5c1-1 1.5-2.7 1-3.5-.8-.5-2.5 0-3.5 1L13.5 8.5 5 6.7c-.5-.1-.9 0-1.2.4l-.3.4c-.2.4-.1.9.3 1.2L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 4.6 5.1c.3.4.8.5 1.2.3l.4-.2c.4-.3.5-.7.4-1.2Z" fill="currentColor" stroke="none"/>',
+  hotel:'<path d="M2 20v-7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v7"/><path d="M2 17h20"/><path d="M6 11V8a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v3"/>',
+  ticket:'<path d="M2 9a3 3 0 0 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 0 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v14" stroke-dasharray="2 3"/>',
+  map:'<path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v16"/><path d="M15 6v16"/>',
+  pin:'<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+  train:'<path d="M8 3.3V7a4 4 0 0 0 8 0V3.3"/><rect x="5" y="7" width="14" height="11" rx="2"/><path d="M6 18 4 22"/><path d="m18 18 2 4"/><path d="M9 13h6"/>',
+  dining:'<path d="M7 2v20"/><path d="M5 2v6a2 2 0 0 0 2 2 2 2 0 0 0 2-2V2"/><path d="M17 2c-1.5 1-2 3-2 5 0 1.6 1 2.4 2 2.4V22"/>',
+  luggage:'<rect x="4" y="6" width="16" height="16" rx="2"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M9 11v8"/><path d="M15 11v8"/>',
+  trash:'<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  sparkle:'<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" fill="currentColor" stroke="none"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z" fill="currentColor" stroke="none"/>',
+  plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  wallet:'<path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><path d="M18 13h.01"/>',
+  bot:'<path d="M12 8V4"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/>',
+  calendar:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',
+  compass:'<circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-2.9 6.4-6.4 2.9 2.9-6.4 6.4-2.9z" fill="currentColor" stroke="none"/>',
+  alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20z"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="currentColor" stroke="none"/>',
+  beach:'<path d="M12 21a8 8 0 0 0-8-8"/><path d="M12 3a9 9 0 0 1 9 9H12z" fill="currentColor" stroke="none"/><path d="M12 12 4 13"/>',
+  city:'<rect x="3" y="9" width="8" height="12" rx="1"/><rect x="11" y="3" width="10" height="18" rx="1"/><path d="M15 7h2M15 11h2M15 15h2M6 13h2M6 17h2"/>',
+  mountain:'<path d="m8 3 4 8 5-5 5 11H2L8 3z"/>',
+  landmark:'<path d="M3 21h18"/><path d="M5 21V10M9 21V10M15 21V10M19 21V10"/><path d="m3 10 9-6 9 6z" fill="currentColor" stroke="none"/>',
+  bookmark:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  swap:'<path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/>'
+};
+function icSVG(n){const p=ICONS[n]||ICONS.pin;return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;}
+const ic=icSVG;
+function hydrateIcons(root){(root||document).querySelectorAll('[data-ic]').forEach(el=>{el.innerHTML=icSVG(el.dataset.ic);});}
+const money=n=>"$"+Math.round(n).toLocaleString();
+const MS=86400000;
+function pad(n){return String(n).padStart(2,'0');}
+function addDays(d,n){return new Date(d.getFullYear(),d.getMonth(),d.getDate()+n,12);}
+function isoDate(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function skyDate(d){return String(d.getFullYear()).slice(2)+pad(d.getMonth()+1)+pad(d.getDate());}
+function prettyDate(d){return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});}
+function prettyRange(a,b){const o={month:'short',day:'numeric'};return a.toLocaleDateString('en-US',o)+' – '+b.toLocaleDateString('en-US',o);}
+function todayNoon(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12);}
+
+/* date-aware deep links into partner sites */
+function originIata(){const m=state.origin.match(/\(([A-Za-z]{3})\)/);return (m?m[1]:state.origin.replace(/[^A-Za-z]/g,'').slice(0,3)).toLowerCase();}
+function flightURL(dest,dep,ret){
+  // Link to Google Flights (same source as our live prices) so the fare matches what we quoted
+  const o=originIata().toUpperCase();
+  const d=dest.iata?dest.iata.toUpperCase():dest.city;
+  return "https://www.google.com/travel/flights?q="+encodeURIComponent(`Flights from ${o} to ${d} on ${isoDate(dep)} returning ${isoDate(ret)}`);
+}
+function hotelURL(name,city,ci,co){
+  // Booking.com reliably honors exact check-in/out dates in the URL (Google Hotels hides
+  // dates in an internal token), so the price you land on is for the correct stay.
+  const generic=/^(top-rated hostel|central 3-star hotel|boutique 4-star stay)/i.test(name.trim());
+  const q=generic?city:(name+', '+city);
+  return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(q)}&checkin=${isoDate(ci)}&checkout=${isoDate(co)}&group_adults=1&no_rooms=1&group_children=0`;}
+function viatorSearch(city){return "https://www.viator.com/searchResults/all?text="+encodeURIComponent(city);}
+// each activity links to a search for that exact tour in that city (not a generic destination page)
+function actURL(title,city){return "https://www.viator.com/searchResults/all?text="+encodeURIComponent(title+' '+city);}
+
+/* ---------------- AIRPORT / CITY DATABASE (for autocomplete + country search) ----------------
+   [IATA, City, Country] — major-city-first ordering so country searches pick prominent cities. */
+const AIRPORTS_FALLBACK=[
+  ['JFK','New York','United States'],['LGA','New York','United States'],['EWR','Newark','United States'],
+  ['LAX','Los Angeles','United States'],['SFO','San Francisco','United States'],['ORD','Chicago','United States'],
+  ['MIA','Miami','United States'],['BOS','Boston','United States'],['SEA','Seattle','United States'],
+  ['ATL','Atlanta','United States'],['DFW','Dallas','United States'],['DEN','Denver','United States'],
+  ['LAS','Las Vegas','United States'],['MCO','Orlando','United States'],['IAD','Washington','United States'],
+  ['PHX','Phoenix','United States'],['AUS','Austin','United States'],['SAN','San Diego','United States'],
+  ['HNL','Honolulu','United States'],['MSY','New Orleans','United States'],['BNA','Nashville','United States'],
+  ['YYZ','Toronto','Canada'],['YVR','Vancouver','Canada'],['YUL','Montreal','Canada'],['YYC','Calgary','Canada'],
+  ['MEX','Mexico City','Mexico'],['CUN','Cancún','Mexico'],['GDL','Guadalajara','Mexico'],['OAX','Oaxaca','Mexico'],['SJD','Los Cabos','Mexico'],['PVR','Puerto Vallarta','Mexico'],
+  ['SJU','San Juan','Puerto Rico'],['SJO','San José','Costa Rica'],['PTY','Panama City','Panama'],['HAV','Havana','Cuba'],['PUJ','Punta Cana','Dominican Republic'],['NAS','Nassau','Bahamas'],['MBJ','Montego Bay','Jamaica'],
+  ['BOG','Bogotá','Colombia'],['MDE','Medellín','Colombia'],['CTG','Cartagena','Colombia'],
+  ['LIM','Lima','Peru'],['CUZ','Cusco','Peru'],['SCL','Santiago','Chile'],['EZE','Buenos Aires','Argentina'],
+  ['GRU','São Paulo','Brazil'],['GIG','Rio de Janeiro','Brazil'],['UIO','Quito','Ecuador'],['MVD','Montevideo','Uruguay'],
+  ['LHR','London','United Kingdom'],['LGW','London','United Kingdom'],['MAN','Manchester','United Kingdom'],['EDI','Edinburgh','United Kingdom'],
+  ['DUB','Dublin','Ireland'],
+  ['LIS','Lisbon','Portugal'],['OPO','Porto','Portugal'],['FAO','Faro','Portugal'],
+  ['MAD','Madrid','Spain'],['BCN','Barcelona','Spain'],['SVQ','Seville','Spain'],['AGP','Málaga','Spain'],['VLC','Valencia','Spain'],['PMI','Palma','Spain'],
+  ['CDG','Paris','France'],['ORY','Paris','France'],['NCE','Nice','France'],['LYS','Lyon','France'],['MRS','Marseille','France'],
+  ['FCO','Rome','Italy'],['MXP','Milan','Italy'],['VCE','Venice','Italy'],['FLR','Florence','Italy'],['NAP','Naples','Italy'],
+  ['FRA','Frankfurt','Germany'],['MUC','Munich','Germany'],['BER','Berlin','Germany'],['HAM','Hamburg','Germany'],
+  ['AMS','Amsterdam','Netherlands'],['BRU','Brussels','Belgium'],['ZRH','Zurich','Switzerland'],['GVA','Geneva','Switzerland'],
+  ['VIE','Vienna','Austria'],['PRG','Prague','Czechia'],['BUD','Budapest','Hungary'],['WAW','Warsaw','Poland'],
+  ['ATH','Athens','Greece'],['JTR','Santorini','Greece'],['HER','Heraklion','Greece'],['SKG','Thessaloniki','Greece'],
+  ['CPH','Copenhagen','Denmark'],['ARN','Stockholm','Sweden'],['OSL','Oslo','Norway'],['HEL','Helsinki','Finland'],['KEF','Reykjavik','Iceland'],
+  ['DBV','Dubrovnik','Croatia'],['SPU','Split','Croatia'],['ZAG','Zagreb','Croatia'],
+  ['IST','Istanbul','Turkey'],['AYT','Antalya','Turkey'],
+  ['DXB','Dubai','United Arab Emirates'],['AUH','Abu Dhabi','United Arab Emirates'],['DOH','Doha','Qatar'],['TLV','Tel Aviv','Israel'],
+  ['CAI','Cairo','Egypt'],['RAK','Marrakech','Morocco'],['CMN','Casablanca','Morocco'],['JNB','Johannesburg','South Africa'],['CPT','Cape Town','South Africa'],['NBO','Nairobi','Kenya'],
+  ['BKK','Bangkok','Thailand'],['CNX','Chiang Mai','Thailand'],['HKT','Phuket','Thailand'],
+  ['SIN','Singapore','Singapore'],['KUL','Kuala Lumpur','Malaysia'],['DPS','Bali','Indonesia'],['CGK','Jakarta','Indonesia'],['MNL','Manila','Philippines'],
+  ['HAN','Hanoi','Vietnam'],['SGN','Ho Chi Minh City','Vietnam'],['HKG','Hong Kong','Hong Kong'],['TPE','Taipei','Taiwan'],['ICN','Seoul','South Korea'],
+  ['HND','Tokyo','Japan'],['NRT','Tokyo','Japan'],['KIX','Osaka','Japan'],['FUK','Fukuoka','Japan'],['CTS','Sapporo','Japan'],
+  ['PEK','Beijing','China'],['PVG','Shanghai','China'],
+  ['DEL','Delhi','India'],['BOM','Mumbai','India'],['GOI','Goa','India'],['MAA','Chennai','India'],
+  ['CMB','Colombo','Sri Lanka'],['KTM','Kathmandu','Nepal'],['MLE','Maldives','Maldives'],
+  ['SYD','Sydney','Australia'],['MEL','Melbourne','Australia'],['BNE','Brisbane','Australia'],['AKL','Auckland','New Zealand'],['NAN','Nadi','Fiji']
+];
+// Use the full bundled airport database (airports.js, ~7,900 airports incl. US regional) when present,
+// otherwise fall back to the built-in shortlist so autocomplete still works.
+const AIRPORTS_DB=(typeof window!=='undefined'&&window.AIRPORTS_FULL&&window.AIRPORTS_FULL.length)?window.AIRPORTS_FULL:AIRPORTS_FALLBACK;
+const COUNTRY_ALIAS={usa:'united states','u.s.':'united states','u.s.a.':'united states',america:'united states',uk:'united kingdom','u.k.':'united kingdom',england:'united kingdom',britain:'united kingdom',uae:'united arab emirates',holland:'netherlands'};
+function normCountry(s){s=s.toLowerCase().trim();return COUNTRY_ALIAS[s]||s;}
+function searchAirports(q){
+  q=q.toLowerCase().trim();const nc=normCountry(q);const res=[];
+  for(const row of AIRPORTS_DB){
+    const code=row[0],city=row[1],country=row[2],major=row[3]||0;
+    const cl=city.toLowerCase(),co=country.toLowerCase(),cc=code.toLowerCase();
+    let s=-1;
+    if(cc===q)s=100;                                  // exact airport code
+    else if(cl.startsWith(q))s=major?90:68;           // city starts with
+    else if(cc.startsWith(q))s=major?60:48;           // code starts with
+    else if(cl.includes(q))s=major?38:18;             // city contains
+    else if(co===nc||(nc.length>2&&co.includes(nc)))s=major?14:4; // country
+    if(s>=0)res.push({code,city,country,_s:s});
+  }
+  res.sort((a,b)=>b._s-a._s||a.city.localeCompare(b.city));
+  return res.slice(0,8);
+}
+function citiesInCountry(name){
+  const nc=normCountry(name);
+  function scan(list){const out=[],seen={};for(const r of list){const city=r[1],country=r[2];if(country.toLowerCase()===nc&&!seen[city]){seen[city]=1;out.push({city,iata:r[0],country});}if(out.length>=3)break;}return out;}
+  const curated=scan(AIRPORTS_FALLBACK);   // prominent cities in a sensible order (Rome, Milan, Venice…)
+  return curated.length>=2?curated:scan(AIRPORTS_DB);
+}
+function setupAutocomplete(inputId,menuId){
+  const inp=$(inputId),menu=$(menuId);let items=[],sel=-1;
+  const close=()=>{menu.classList.remove('open');sel=-1;};
+  const hi=()=>[...menu.children].forEach((c,i)=>c.classList.toggle('sel',i===sel));
+  function render(list){
+    items=list;sel=-1;
+    if(!list.length){close();menu.innerHTML='';return;}
+    menu.innerHTML=list.map((a,i)=>`<div class="ac-item" data-i="${i}">${ic('pin')}<div><div>${a.city}</div><div class="ac-sub">${a.country}</div></div><span class="ac-code">${a.code}</span></div>`).join('');
+    menu.classList.add('open');
+  }
+  const choose=a=>{inp.value=a.city+' ('+a.code+')';close();};
+  inp.addEventListener('input',()=>{const q=inp.value.trim();if(q.length<2){close();return;}render(searchAirports(q));});
+  inp.addEventListener('keydown',e=>{
+    if(!menu.classList.contains('open'))return;
+    if(e.key==='ArrowDown'){sel=Math.min(sel+1,items.length-1);hi();e.preventDefault();}
+    else if(e.key==='ArrowUp'){sel=Math.max(sel-1,0);hi();e.preventDefault();}
+    else if(e.key==='Enter'&&sel>=0){choose(items[sel]);e.preventDefault();}
+    else if(e.key==='Escape')close();
+  });
+  menu.addEventListener('mousedown',e=>{const it=e.target.closest('.ac-item');if(!it)return;e.preventDefault();choose(items[+it.dataset.i]);});
+  document.addEventListener('click',e=>{if(e.target!==inp&&!menu.contains(e.target))close();});
+}
+
+/* ---------------- LIVE PRICING (Amadeus via local server.js) ----------------
+   When the app is served by server.js (http://localhost:3000) it fetches real
+   prices. Opened as a plain file, API_BASE is null and it uses sample prices. */
+const API_BASE=(location.protocol==='http:'||location.protocol==='https:')?'/api':null;
+const liveCache={};
+function clone(o){return JSON.parse(JSON.stringify(o));}
+async function getLive(dest,dep,ret){
+  if(!API_BASE)return null;
+  const who=dest.iata||dest.city;if(!who)return null;
+  const key=who+'|'+isoDate(dep)+'|'+isoDate(ret);
+  if(key in liveCache)return liveCache[key];
+  const pr=(async()=>{
+    try{
+      const qs='origin='+encodeURIComponent(originIata().toUpperCase())+
+        '&dest='+encodeURIComponent(dest.city||who)+'&iata='+encodeURIComponent(dest.iata||'')+
+        '&depart='+isoDate(dep)+'&return='+isoDate(ret);
+      const r=await fetch(API_BASE+'/trip?'+qs);
+      if(!r.ok)return null;
+      const j=await r.json();
+      const has=j&&((j.flights&&j.flights.length)||(j.hotels&&j.hotels.length)||(j.activities&&j.activities.length));
+      return has?j:null;
+    }catch(e){return null;}
+  })();
+  liveCache[key]=pr;return pr;
+}
+/* Build a trip from the available flight/hotel/activity lists, budget-aware by tier:
+   style 0 Budget  -> cheapest everything, aim UNDER budget
+   style 1 Balanced-> nicest hotel that still fits UNDER budget
+   style 2 Treat   -> premium hotel + more activities, capped at budget + $400  */
+const OVER_CAP=400;   // no option should land more than this far over budget
+function composeFromLists(t,budget){
+  const n=t.nights;
+  const F=[...(t.dest.flights||[])].sort((a,b)=>a.p-b.p);
+  const H=[...(t.dest.hotels||[])].sort((a,b)=>a.p-b.p);
+  const A=[...(t.dest.acts||[])].sort((a,b)=>a.p-b.p);
+  if(!F.length||!H.length)return;
+  const tv=state.travelers||1, rm=roomsFor(tv);   // flights/activities × travelers, hotel × rooms
+  const partyBudget=budget*tv;                    // `budget` is PER PERSON
+  const partyCap=(budget+OVER_CAP)*tv;            // treat may run up to $400/person over
+  const flight=F[0];            // cheapest flight on every tier (flight is the biggest lever)
+  const fCost=flight.p*tv;
+  const hCost=h=>h.p*n*rm;
+  const aCost=a=>a.p*tv;
+  const act1=A[0]?aCost(A[0]):0;
+  let hotel,ceil,maxActs;
+  if(t.style<=0){               // BUDGET — cheapest, stay under budget
+    hotel=H[0];ceil=partyBudget;maxActs=2;
+  }else if(t.style===1){        // BALANCED — nicest hotel that still fits UNDER budget
+    hotel=H[0];for(const h of H){if(fCost+hCost(h)+act1<=partyBudget)hotel=h;}ceil=partyBudget;maxActs=3;
+  }else{                        // TREAT — nicest hotel that fits within budget + $400/person
+    hotel=H[0];for(const h of H){if(fCost+hCost(h)<=partyCap)hotel=h;}ceil=partyCap;maxActs=4;
+  }
+  let spent=fCost+hCost(hotel);const acts=[];
+  for(const a of A){
+    if(acts.length>=maxActs)break;
+    if(spent+aCost(a)<=ceil){acts.push({...a});spent+=aCost(a);}
+  }
+  if(!acts.length&&A.length&&fCost+hCost(hotel)+aCost(A[0])<=ceil)acts.push({...A[0]});
+  t.flight={...flight};t.hotel={...hotel,total:hCost(hotel)};t.acts=acts;t.rooms=rm;
+  // cheapest possible build (flight + cheapest hotel) — used to advise the user
+  t.minTrip=Math.round(F[0].p*tv+H[0].p*n*rm);
+  t.tooExpensive=t.minTrip>partyCap;   // can't even get within $400/person of budget
+}
+function applyLive(t,live){
+  if(!live)return false;
+  if(live.resolved&&live.resolved.city&&t.dest.generic)t.dest.city=live.resolved.city;
+  let priceLive=false;
+  if(live.flights&&live.flights.length){t.dest.flights=live.flights;priceLive=true;}
+  if(live.hotels&&live.hotels.length){t.dest.hotels=live.hotels;priceLive=true;}
+  if(live.activities&&live.activities.length)t.dest.acts=live.activities;
+  if(!priceLive)return false;       // only call it "live" when real fares/rates arrived
+  composeFromLists(t,state.budget);
+  t.live=true;
+  return true;
+}
+function showOptionsLoading(b){
+  $('optionsLoading').style.display=b?'block':'none';
+  $('optionsGrid').style.display=b?'none':'';
+  if(b)$('resBudgetMsg').style.display='none';
+}
+async function refreshLivePrices(gate){
+  if(!API_BASE){showOptionsLoading(false);renderOptions();return;}
+  if(gate){showOptionsLoading(true);}                 // hold the cards, show a spinner
+  else{state.options.forEach(t=>{if(!t.live)t.pendingLive=true;});renderOptions();toast('Fetching live prices…');}
+  let any=false;
+  await Promise.all(state.options.map(async t=>{
+    const ret=addDays(state.startDate,t.nights);
+    const live=await getLive(t.dest,state.startDate,ret);
+    t.pendingLive=false;
+    if(live&&applyLive(t,live))any=true;
+    if(!gate)renderOptions();                          // progressive update (non-gated path)
+  }));
+  showOptionsLoading(false);
+  renderOptions();                                     // final, sorted, budget-correct
+  toast(any?'Showing live prices':'Live prices unavailable — showing estimates');
+}
+function titleCase(s){return s.replace(/\b\w/g,c=>c.toUpperCase());}
+
+/* ---------------- DISTANCE-AWARE SAMPLE FARES ----------------
+   Without a paid flight API, sample flight prices used to be flat numbers that
+   didn't scale with how far you're actually flying — a "custom" destination
+   3,000 miles away and one 9,000 miles away got the same $380/$300/$520 fares.
+   This estimates a realistic round-trip economy fare from the great-circle
+   distance between airports, so the budget math is at least in the right
+   ballpark for any origin/destination. Coordinates cover ~130 major hubs
+   (the same "prominent city" list used for AI-mode destination picking). */
+const AIRPORT_COORDS={
+  JFK:[40.64,-73.78],LGA:[40.78,-73.87],EWR:[40.69,-74.17],LAX:[33.94,-118.41],SFO:[37.62,-122.38],
+  ORD:[41.98,-87.90],MIA:[25.80,-80.29],BOS:[42.36,-71.01],SEA:[47.45,-122.31],ATL:[33.64,-84.43],
+  DFW:[32.90,-97.04],DEN:[39.86,-104.67],LAS:[36.08,-115.15],MCO:[28.43,-81.31],IAD:[38.94,-77.46],
+  PHX:[33.43,-112.01],AUS:[30.20,-97.67],SAN:[32.73,-117.19],HNL:[21.32,-157.92],MSY:[29.99,-90.26],
+  BNA:[36.13,-86.68],YYZ:[43.68,-79.63],YVR:[49.19,-123.18],YUL:[45.47,-73.74],YYC:[51.13,-114.01],
+  MEX:[19.44,-99.07],CUN:[21.04,-86.87],GDL:[20.52,-103.31],OAX:[17.00,-96.73],SJD:[23.15,-109.72],
+  PVR:[20.68,-105.25],SJU:[18.44,-66.00],SJO:[9.99,-84.21],PTY:[9.07,-79.38],HAV:[22.99,-82.41],
+  PUJ:[18.57,-68.36],NAS:[25.04,-77.47],MBJ:[18.50,-77.91],BOG:[4.70,-74.15],MDE:[6.16,-75.42],
+  CTG:[10.44,-75.51],LIM:[-12.02,-77.11],CUZ:[-13.54,-71.94],SCL:[-33.39,-70.79],EZE:[-34.82,-58.54],
+  GRU:[-23.43,-46.47],GIG:[-22.81,-43.24],UIO:[-0.13,-78.49],MVD:[-34.84,-56.03],LHR:[51.47,-0.45],
+  LGW:[51.15,-0.19],MAN:[53.36,-2.27],EDI:[55.95,-3.36],DUB:[53.43,-6.24],LIS:[38.77,-9.13],
+  OPO:[41.24,-8.68],FAO:[37.02,-7.97],MAD:[40.47,-3.56],BCN:[41.30,2.08],SVQ:[37.42,-5.89],
+  AGP:[36.68,-4.50],VLC:[39.49,-0.48],PMI:[39.55,2.74],CDG:[49.01,2.55],ORY:[48.73,2.36],
+  NCE:[43.66,7.22],LYS:[45.73,5.09],MRS:[43.44,5.22],FCO:[41.80,12.25],MXP:[45.63,8.72],
+  VCE:[45.51,12.35],FLR:[43.81,11.20],NAP:[40.89,14.29],FRA:[50.03,8.57],MUC:[48.35,11.79],
+  BER:[52.36,13.50],HAM:[53.63,9.99],AMS:[52.31,4.76],BRU:[50.90,4.48],ZRH:[47.46,8.55],
+  GVA:[46.24,6.11],VIE:[48.11,16.57],PRG:[50.10,14.26],BUD:[47.44,19.26],WAW:[52.17,20.97],
+  ATH:[37.94,23.95],JTR:[36.40,25.48],HER:[35.34,25.18],SKG:[40.52,22.97],CPH:[55.62,12.66],
+  ARN:[59.65,17.92],OSL:[60.20,11.10],HEL:[60.32,24.96],KEF:[63.99,-22.61],DBV:[42.56,18.27],
+  SPU:[43.54,16.30],ZAG:[45.74,16.07],IST:[41.28,28.75],AYT:[36.90,30.79],DXB:[25.25,55.36],
+  AUH:[24.43,54.65],DOH:[25.27,51.61],TLV:[32.01,34.89],CAI:[30.12,31.41],RAK:[31.61,-8.04],
+  CMN:[33.37,-7.59],JNB:[-26.14,28.25],CPT:[-33.97,18.60],NBO:[-1.32,36.93],BKK:[13.69,100.75],
+  CNX:[18.77,98.96],HKT:[8.11,98.32],SIN:[1.36,103.99],KUL:[2.75,101.71],DPS:[-8.75,115.17],
+  CGK:[-6.13,106.66],MNL:[14.51,121.02],HAN:[21.21,105.80],SGN:[10.82,106.66],HKG:[22.31,113.91],
+  TPE:[25.08,121.23],ICN:[37.46,126.44],HND:[35.55,139.78],NRT:[35.76,140.39],KIX:[34.43,135.24],
+  FUK:[33.58,130.45],CTS:[42.78,141.69],PEK:[40.08,116.58],PVG:[31.14,121.81],DEL:[28.56,77.10],
+  BOM:[19.09,72.87],GOI:[15.38,73.83],MAA:[12.99,80.16],CMB:[7.18,79.88],KTM:[27.70,85.36],
+  MLE:[4.19,73.53],SYD:[-33.95,151.18],MEL:[-37.67,144.84],BNE:[-27.38,153.12],AKL:[-37.01,174.79],
+  NAN:[-17.76,177.44]
+};
+/* City-name-keyed twin of AIRPORT_COORDS. The full airports.js database (~7,900 airports)
+   can resolve a typed city to a secondary/regional airport code we don't have coordinates
+   for (e.g. "Toronto" → YTZ, the small downtown airport, instead of YYZ) — matching on the
+   city name itself (which we always have) is more reliable than matching on whichever
+   specific IATA code the search happened to return. */
+function normCity(s){return (s||'').toString().normalize('NFD').replace(/\p{M}/gu,'').toLowerCase().trim();}
+const CITY_COORDS={
+  'new york':[40.64,-73.78],'los angeles':[33.94,-118.41],'san francisco':[37.62,-122.38],chicago:[41.98,-87.90],
+  miami:[25.80,-80.29],boston:[42.36,-71.01],seattle:[47.45,-122.31],atlanta:[33.64,-84.43],dallas:[32.90,-97.04],
+  denver:[39.86,-104.67],'las vegas':[36.08,-115.15],orlando:[28.43,-81.31],washington:[38.94,-77.46],
+  phoenix:[33.43,-112.01],austin:[30.20,-97.67],'san diego':[32.73,-117.19],honolulu:[21.32,-157.92],
+  'new orleans':[29.99,-90.26],nashville:[36.13,-86.68],toronto:[43.68,-79.63],vancouver:[49.19,-123.18],
+  montreal:[45.47,-73.74],calgary:[51.13,-114.01],'mexico city':[19.44,-99.07],cancun:[21.04,-86.87],
+  guadalajara:[20.52,-103.31],oaxaca:[17.00,-96.73],'los cabos':[23.15,-109.72],'puerto vallarta':[20.68,-105.25],
+  'san juan':[18.44,-66.00],'san jose':[9.99,-84.21],'panama city':[9.07,-79.38],havana:[22.99,-82.41],
+  'punta cana':[18.57,-68.36],nassau:[25.04,-77.47],'montego bay':[18.50,-77.91],bogota:[4.70,-74.15],
+  medellin:[6.16,-75.42],cartagena:[10.44,-75.51],lima:[-12.02,-77.11],cusco:[-13.54,-71.94],
+  santiago:[-33.39,-70.79],'buenos aires':[-34.82,-58.54],'sao paulo':[-23.43,-46.47],
+  'rio de janeiro':[-22.81,-43.24],quito:[-0.13,-78.49],montevideo:[-34.84,-56.03],london:[51.47,-0.45],
+  manchester:[53.36,-2.27],edinburgh:[55.95,-3.36],dublin:[53.43,-6.24],lisbon:[38.77,-9.13],porto:[41.24,-8.68],
+  faro:[37.02,-7.97],madrid:[40.47,-3.56],barcelona:[41.30,2.08],seville:[37.42,-5.89],malaga:[36.68,-4.50],
+  valencia:[39.49,-0.48],palma:[39.55,2.74],paris:[49.01,2.55],nice:[43.66,7.22],lyon:[45.73,5.09],
+  marseille:[43.44,5.22],rome:[41.80,12.25],milan:[45.63,8.72],venice:[45.51,12.35],florence:[43.81,11.20],
+  naples:[40.89,14.29],frankfurt:[50.03,8.57],munich:[48.35,11.79],berlin:[52.36,13.50],hamburg:[53.63,9.99],
+  amsterdam:[52.31,4.76],brussels:[50.90,4.48],zurich:[47.46,8.55],geneva:[46.24,6.11],vienna:[48.11,16.57],
+  prague:[50.10,14.26],budapest:[47.44,19.26],warsaw:[52.17,20.97],athens:[37.94,23.95],santorini:[36.40,25.48],
+  heraklion:[35.34,25.18],thessaloniki:[40.52,22.97],copenhagen:[55.62,12.66],stockholm:[59.65,17.92],
+  oslo:[60.20,11.10],helsinki:[60.32,24.96],reykjavik:[63.99,-22.61],dubrovnik:[42.56,18.27],split:[43.54,16.30],
+  zagreb:[45.74,16.07],istanbul:[41.28,28.75],antalya:[36.90,30.79],dubai:[25.25,55.36],'abu dhabi':[24.43,54.65],
+  doha:[25.27,51.61],'tel aviv':[32.01,34.89],cairo:[30.12,31.41],marrakech:[31.61,-8.04],casablanca:[33.37,-7.59],
+  johannesburg:[-26.14,28.25],'cape town':[-33.97,18.60],nairobi:[-1.32,36.93],bangkok:[13.69,100.75],
+  'chiang mai':[18.77,98.96],phuket:[8.11,98.32],singapore:[1.36,103.99],'kuala lumpur':[2.75,101.71],
+  bali:[-8.75,115.17],jakarta:[-6.13,106.66],manila:[14.51,121.02],hanoi:[21.21,105.80],
+  'ho chi minh city':[10.82,106.66],'hong kong':[22.31,113.91],taipei:[25.08,121.23],seoul:[37.46,126.44],
+  tokyo:[35.55,139.78],osaka:[34.43,135.24],fukuoka:[33.58,130.45],sapporo:[42.78,141.69],beijing:[40.08,116.58],
+  shanghai:[31.14,121.81],delhi:[28.56,77.10],mumbai:[19.09,72.87],goa:[15.38,73.83],chennai:[12.99,80.16],
+  colombo:[7.18,79.88],kathmandu:[27.70,85.36],maldives:[4.19,73.53],sydney:[-33.95,151.18],
+  melbourne:[-37.67,144.84],brisbane:[-27.38,153.12],auckland:[-37.01,174.79],nadi:[-17.76,177.44]
+};
+// resolve coordinates for a place given its city name and/or IATA code — city name first
+// (more reliable against the full airport database), IATA code as a fallback
+function coordsFor(city,iata){
+  const c=CITY_COORDS[normCity(city)];if(c)return c;
+  const code=(iata||'').toUpperCase();
+  return AIRPORT_COORDS[code]||null;
+}
+function originCoords(){
+  const code=originIata().toUpperCase();
+  if(AIRPORT_COORDS[code])return AIRPORT_COORDS[code];
+  return CITY_COORDS[normCity((state.origin||'').replace(/\([^)]*\)/,''))]||null;
+}
+function milesBetween(a,b){
+  if(!a||!b)return null;
+  const R=3958.8,toRad=d=>d*Math.PI/180;
+  const dLat=toRad(b[0]-a[0]),dLon=toRad(b[1]-a[1]);
+  const s=Math.sin(dLat/2)**2+Math.cos(toRad(a[0]))*Math.cos(toRad(b[0]))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+}
+// realistic-ish round-trip economy fare from great-circle miles (calibrated to rough
+// real-world averages: ~$180 short-haul, ~$450-600 transatlantic, ~$900-1300 transpacific)
+function fareFromMiles(miles){
+  return 130+0.09*Math.min(miles,4000)+(miles>4000?0.075*(miles-4000)+150:0);
+}
+/* ---------------- DATE-BASED FARE VARIABILITY ----------------
+   Real fares swing with day-of-week and season — flying midweek and avoiding
+   peak summer/holidays is typically 10-20% cheaper, not 2x. Kept deliberately
+   mild so it nudges "AI decides" toward genuinely cheaper dates without
+   stacking on top of the already-cheapest flight tier and pushing totals
+   unrealistically low. Non-peak months are a flat baseline (no extra "off-
+   season" discount) so the cheap date pool spreads across the whole scan
+   window instead of clustering right after peak season ends. */
+function dateFactor(d){
+  if(!d)d=todayNoon();
+  const day=d.getDay();                                        // 0=Sun..6=Sat
+  const weekdayF=(day===2||day===3)?0.94:(day===5||day===0)?1.08:1.0;   // Tue/Wed cheapest, Fri/Sun priciest
+  const m=d.getMonth(),dt=d.getDate();                          // 0=Jan
+  let seasonF=1.0;                                              // flat baseline most of the year
+  if((m===5&&dt>=15)||m===6||m===7) seasonF=1.16;               // mid-Jun–Aug: peak summer
+  else if(m===11&&dt>=15) seasonF=1.20;                         // mid–late Dec: holidays
+  else if(m===0&&dt<=5) seasonF=1.08;                           // New Year's week
+  return weekdayF*seasonF;
+}
+function fareTiersFromBase(base){
+  const round5=n=>Math.max(60,Math.round(n/5)*5);
+  return {cheap:round5(base*0.78),mid:round5(base),flex:round5(base*1.35)};
+}
+function durationFromMiles(miles){
+  const hrs=miles/475+ (miles>500?1:0.4);   // cruise speed + layover/taxi overhead
+  const h=Math.floor(hrs),m=Math.round((hrs-h)*60);
+  return (h?h+'h ':'')+(m?m+'m':(h?'':'45m'));
+}
+function estimateFareTiers(destIata,destCity,dep){
+  const origin=originCoords();
+  const dest=coordsFor(destCity,destIata);
+  if(!origin||!dest)return null;
+  const miles=milesBetween(origin,dest);
+  if(!miles)return null;
+  const base=fareFromMiles(miles)*dateFactor(dep||state.startDate);
+  return {...fareTiersFromBase(base),miles};
+}
+// scale a cloned catalog destination's hand-authored (JFK-reference) flight prices by
+// how much farther/closer the actual origin is, and by the date's season/weekday factor —
+// skipped for generic destinations, which already bake both into fresh fares at creation
+// time (see makeGeneric).
+function scaleDestFlights(dest,dep){
+  if(!dest||dest.generic||!dest.flights||!dest.flights.length)return;
+  const origin=originCoords();
+  const destC=coordsFor(dest.city,dest.iata);
+  const jfk=AIRPORT_COORDS.JFK;
+  let distScale=1;
+  if(origin&&destC&&jfk){
+    const actual=milesBetween(origin,destC),ref=milesBetween(jfk,destC);
+    if(actual&&ref)distScale=Math.max(0.4,Math.min(3,actual/ref));
+  }
+  const scale=distScale*dateFactor(dep||state.startDate);
+  if(Math.abs(scale-1)<0.03)return;
+  dest.flights=dest.flights.map(f=>({...f,p:Math.max(60,Math.round(f.p*scale/5)*5)}));
+}
+// Deterministic pseudo-random 0..1 for a given date, standing in for the kind of
+// day-to-day fare noise real fares have on top of the clean weekday/season pattern —
+// without it, every "cheap" weekday in the same season prices identically, so the
+// scan always lands on the very first one (same date every single search).
+function dayNoise(d){const seed=Math.floor(d.getTime()/86400000);const x=Math.sin(seed*12.9898)*43758.5453;return x-Math.floor(x);}
+// Scan a window of candidate departure dates and pick one from among the cheapest —
+// randomized within that cheap pool (not just the single global minimum) so repeated
+// searches don't all converge on the exact same calendar date. Used when the depart-date
+// field is left blank ("AI decides").
+function pickBestDepartDate(){
+  const floor=addDays(todayNoon(),14);     // don't suggest an unrealistically last-minute date
+  const candidates=[];
+  for(let i=0;i<=180;i++){
+    const d=addDays(floor,i);
+    candidates.push({d,f:dateFactor(d)*(0.92+dayNoise(d)*0.16)});   // ±8% day-to-day noise
+  }
+  candidates.sort((a,b)=>a.f-b.f);
+  const poolSize=Math.max(20,Math.round(candidates.length*0.25));    // cheapest ~25% of dates — wide enough to spread across months, not just the first cheap week
+  return candidates[Math.floor(Math.random()*poolSize)].d;
+}
+
+function makeGeneric(raw,iata,country){
+  const city=titleCase(raw.trim());
+  const grads=["linear-gradient(135deg,#f97316,#db2777)","linear-gradient(135deg,#f59e0b,#ef4444)","linear-gradient(135deg,#8b5cf6,#ec4899)","linear-gradient(135deg,#fb923c,#be123c)"];
+  const tiers=estimateFareTiers(iata,city);
+  const flights=tiers
+    ? [{t:"Low-cost carrier — "+(tiers.miles>800?"1 stop":"direct"),s:durationFromMiles(tiers.miles)+" · Basic",p:tiers.cheap},
+       {t:"Best value fare",s:durationFromMiles(tiers.miles)+" · Economy",p:tiers.mid},
+       {t:"Flexible / refundable fare",s:durationFromMiles(tiers.miles*1.1)+" · Economy",p:tiers.flex}]
+    : [{t:"Best value fare",s:"Economy",p:380},{t:"Low-cost carrier",s:"Basic",p:300},{t:"Flexible economy",s:"Economy",p:520}];
+  return {city,country:country||"",emoji:"🌍",iata:iata||null,grad:grads[Math.floor(Math.random()*grads.length)],vibes:[],generic:true,
+    flights,
+    hotels:[{t:"Top-rated hostel in "+city,s:"Private room · 8.9 ★",p:45},{t:"Central 3-star hotel",s:"Great location · 8.6 ★",p:85},{t:"Boutique 4-star stay",s:"9.1 ★",p:160}],
+    acts:[{t:city+" highlights walking tour",s:"3h · top rated",p:35,link:viatorSearch(city)},{t:"Local food tour",s:"3h",p:45,link:viatorSearch(city)},{t:"Popular day trip",s:"Full day",p:60,link:viatorSearch(city)},{t:"Skip-the-line top sight",s:"2h",p:30,link:viatorSearch(city)}]};
+}
+
+function go(v){
+  if(v==='home'||v==='results'||v==='detail')state.lastPlan=v;
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
+  $('view-'+v).classList.add('active');
+  $('nav-home').classList.toggle('active',v==='home'||v==='results'||v==='detail');
+  $('nav-itin').classList.toggle('active',v==='itin');
+  $('nav-premium').classList.toggle('active',v==='premium');
+  $('nav-account').classList.toggle('active',v==='account');
+  if(v==='account')renderAccount();
+  if(v==='premium')updateMemberUI();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+// "Plan a trip" returns you to where you left off (form, results, or a trip you were customizing)
+function goPlan(){go(state.lastPlan||'home');}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);}
+
+$('vibes').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;
+  b.classList.toggle('on');const v=b.dataset.v;
+  state.vibes.includes(v)?state.vibes=state.vibes.filter(x=>x!==v):state.vibes.push(v);});
+
+/* ---------------- GENERATION ---------------- */
+function scoreDest(key){let s=0;const d=DESTS[key];state.vibes.forEach(v=>{if(d.vibes.includes(v))s+=2;});return s+Math.random();}
+function buildTrip(key,nights,budget,style){
+  // clone before scaling so the shared DESTS catalog (hand-authored, JFK-reference
+  // prices) never gets permanently mutated — each search re-scales fresh from state.origin
+  const d=JSON.parse(JSON.stringify(DESTS[key]));
+  scaleDestFlights(d);
+  const fi=style===0?1:style===1?0:2;
+  const flight=d.flights[fi]||d.flights[0];
+  const hotel=d.hotels[Math.min(style,d.hotels.length-1)];
+  const hotelTotal=hotel.p*nights;
+  let remaining=budget-flight.p-hotelTotal;
+  const pool=[...d.acts].sort((a,b)=>a.p-b.p);
+  const chosen=[];const maxActs=style===0?2:style===1?3:4;
+  for(const a of pool){if(chosen.length>=maxActs)break;if(a.p<=remaining){chosen.push(a);remaining-=a.p;}}
+  if(chosen.length===0)chosen.push(pool[0]);
+  return {key,style,dest:d,nights,flight:{...flight},hotel:{...hotel,total:hotelTotal},acts:chosen.map(a=>({...a}))};
+}
+function tripTotal(t){const tv=state.travelers||1;return t.flight.p*tv+t.hotel.total+t.acts.reduce((s,a)=>s+a.p*tv,0);}
+
+function generate(){
+  const budget=parseInt($('budget').value)||0;
+  if(budget<200){toast("Try a budget of at least $200");return;}
+  const origin=$('origin').value.trim();
+  if(!origin){toast("Add a departure city to book flights");$('origin').focus();return;}
+  state.origin=origin;state.budget=budget;
+  state.travelers=parseInt($('travelers').value)||1;
+  // date — blank means "AI decides": scan for the cheapest date instead of a fixed default
+  const whenVal=$('when').value;
+  if(whenVal){const p=whenVal.split('-');state.startDate=new Date(+p[0],+p[1]-1,+p[2],12);state.dateAutoPicked=false;}
+  else{state.startDate=pickBestDepartDate();state.dateAutoPicked=true;}
+  let nights=parseInt($('nights').value)||0;
+  const rawDest=$('dest').value.trim();
+  const destInput=rawDest.toLowerCase();
+
+  // clear temporary custom destinations from a previous search
+  Object.keys(DESTS).forEach(k=>{if(k[0]==='_')delete DESTS[k];});
+  const all=Object.keys(DESTS);const dflt=nights||4;
+  const partyBudget=budget*(state.travelers||1);
+  function fitStyle(key,n){for(const st of [2,1,0]){const t=buildTrip(key,n,budget,st);if(tripTotal(t)<=partyBudget)return t;}return buildTrip(key,n,budget,0);}
+  let _gid=0;
+  function regGeneric(city,iata,country){const key='__g'+(_gid++);DESTS[key]=makeGeneric(city,iata,country);return key;}
+
+  // if the user picked from the airport dropdown, pull the "(IATA)" code
+  const iataM=rawDest.match(/\(([A-Za-z]{3})\)/);
+  const typedIata=iataM?iataM[1].toUpperCase():null;
+  const cityName=rawDest.replace(/\([^)]*\)/,'').trim();
+
+  // resolve the destination -> specific city, a country (several cities), custom city, or AI picks
+  let mode='ai',keys=[];
+  if(rawDest){
+    if(typedIata){
+      const catKey=all.find(k=>DESTS[k].iata===typedIata);
+      mode='city';keys=[catKey||regGeneric(cityName||rawDest,typedIata,'')];
+    }else{
+      const exactCity=all.find(k=>DESTS[k].city.toLowerCase()===destInput);
+      const exactCountry=all.filter(k=>DESTS[k].country.toLowerCase()===destInput);
+      const dbCities=citiesInCountry(rawDest);
+      if(exactCity){mode='city';keys=[exactCity];}
+      else if(exactCountry.length>=2){mode='country';keys=exactCountry.slice(0,3);}
+      else if(dbCities.length>=2){mode='country';keys=dbCities.map(c=>regGeneric(c.city,c.iata,c.country));}
+      else{
+        const partCity=all.find(k=>DESTS[k].city.toLowerCase().includes(destInput));
+        const partCountry=all.filter(k=>DESTS[k].country.toLowerCase().includes(destInput));
+        const dbCity=searchAirports(rawDest)[0];
+        if(partCity){mode='city';keys=[partCity];}
+        else if(partCountry.length){mode='country';keys=partCountry.slice(0,3);}
+        else if(dbCity){mode='city';keys=[regGeneric(dbCity.city,dbCity.code,dbCity.country)];toast('Building a custom trip to '+dbCity.city);}
+        else{mode='city';keys=[regGeneric(cityName||rawDest,null,'')];toast('Building a custom trip to '+(cityName||rawDest));}
+      }
+    }
+  }
+
+  let title,sub,options=[];
+  if(mode==='ai'){
+    // rank destinations by: fits within budget+$400 (sample), then vibe match, then cheapest
+    const cand=all.filter(k=>k[0]!=='_').map(k=>{
+      const tt=buildTrip(k,nights||dflt,budget,0);composeFromLists(tt,budget);
+      return {k,total:tripTotal(tt),score:scoreDest(k),country:DESTS[k].country};
+    });
+    cand.sort((a,b)=>{
+      const af=a.total<=partyBudget+OVER_CAP*(state.travelers||1)?0:1,bf=b.total<=partyBudget+OVER_CAP*(state.travelers||1)?0:1;
+      if(af!==bf)return af-bf;
+      return af===0?(b.score-a.score):(a.total-b.total);
+    });
+    const picks=[],seen={};
+    for(const c of cand){if(seen[c.country])continue;seen[c.country]=1;picks.push(c.k);if(picks.length>=3)break;}
+    picks.forEach((k,i)=>{const t=fitStyle(k,nights||(3+i));t.style=i;options.push(t);});
+    title="Where "+money(budget)+"/person can take you";sub=(state.vibes.length?"Matched to your vibe — ":"")+"AI-picked destinations within your budget";
+  }else if(keys.length===1){
+    const k=keys[0];
+    [0,1,2].forEach(i=>{const t=buildTrip(k,dflt,budget,i);t.style=i;options.push(t);});
+    title="Trips to "+DESTS[k].city;sub="3 ways to do "+DESTS[k].city+" on a "+money(budget)+"/person budget";
+  }else{
+    keys.forEach((k,i)=>{const t=fitStyle(k,dflt);t.style=i;options.push(t);});
+    const country=DESTS[keys[0]].country||titleCase(rawDest);
+    title="Trips across "+country;sub=keys.length+" cities to explore on a "+money(budget)+"/person budget";
+  }
+  state.rankLabels=true;
+  options.forEach(t=>composeFromLists(t,budget));   // budget-aware tiers (sample; live re-runs this)
+  state.options=options;
+  $('resTitle').textContent=title;
+  $('resSub').textContent=sub+" · "+prettyDate(state.startDate)+(state.dateAutoPicked?" (picked for the cheapest fares — set a date above to lock it in)":"");
+  go('results');
+  if(API_BASE)refreshLivePrices(true);              // gate: hold cards until live prices are final
+  else{showOptionsLoading(false);renderOptions();}
+}
+
+function renderOptions(){
+  const g=$('optionsGrid');g.innerHTML='';
+  // order the cards cheapest -> priciest so the labels match real prices
+  if(state.rankLabels){
+    state.options.sort((a,b)=>tripTotal(a)-tripTotal(b));
+    const L=['Budget pick','Balanced','Treat yourself'];
+    state.options.forEach((t,i)=>{t.label=L[Math.min(i,L.length-1)];});
+  }
+  // Roam+ perk: free-plan results may carry one sponsored placement; Roam+ never shows one
+  const sponsoredIdx=state.member?-1:(state.options.length>1?1:0);
+  const pl=$('resPlanLine');
+  if(pl)pl.innerHTML=state.member
+    ? '<span class="adfree-line on">'+ic('check')+' Ad-free, unbiased results — Roam+ member perk</span>'
+    : ic('alert')+' Free plan results may include a sponsored placement. <button class="linktxt" onclick="go(\'premium\')">Go Roam+ for ad-free results →</button>';
+  state.options.forEach((t,idx)=>{
+    const tv=state.travelers||1;const partyBudget=state.budget*tv;
+    const tot=tripTotal(t);const under=partyBudget-tot;
+    const ret=addDays(state.startDate,t.nights);
+    const sponsored=idx===sponsoredIdx;
+    const card=document.createElement('div');card.className='opt-card';
+    card.innerHTML=`
+      <div class="opt-banner" style="background:${t.dest.grad}">
+        <span class="opt-tag">${t.label}</span><span class="banner-ic">${ic('plane')}</span>
+        ${sponsored?'<span class="sponsored-tag">Sponsored</span>':''}
+        <span class="opt-date">${prettyRange(state.startDate,ret)}</span></div>
+      <div class="opt-body">
+        <div><h3>${t.dest.city}</h3><div class="meta">${t.dest.country} · ${t.nights} nights</div></div>
+        <div class="line-item"><span class="e">${ic('plane')}</span>${t.flight.t}</div>
+        <div class="line-item"><span class="e">${ic('hotel')}</span>${t.hotel.t} · ${t.nights} nights</div>
+        <div class="line-item"><span class="e">${ic('ticket')}</span>${t.acts.length} activit${t.acts.length>1?'ies':'y'} included</div>
+        <div class="price-row">
+          <div><div class="tot">${money(tot)} <span class="ptag ${t.pendingLive?'wait':t.live?'live':''}">${t.pendingLive?'updating…':t.live?'live':'est.'}</span></div>
+            <div class="of">${tv>1?'total for '+tv+' travelers':'of '+money(state.budget)+' budget'}</div>
+            ${tv>1?`<div class="pp">${money(tot/tv)} per person · budget ${money(state.budget)}/person</div>`:''}</div>
+          <div class="under ${under<0?'overb':''}">${under>=0?money(under)+' left':money(-under)+' over'}</div></div>
+        <div class="fee-line ${state.member?'waived':''}">${state.member?ic('check')+' Booking-assistance fee waived (Roam+)':'+ '+money(BOOKING_FEE)+' booking-assistance fee · <button class="linktxt" onclick="event.stopPropagation();go(\'premium\')">waive with Roam+</button>'}</div>
+      </div>`;
+    card.onclick=()=>openDetail(idx);
+    g.appendChild(card);
+  });
+  // budget feasibility advice: if even the cheapest option is over budget, say so
+  const msg=$('resBudgetMsg');
+  const tvB=state.travelers||1;const partyB=state.budget*tvB;
+  const totals=state.options.map(t=>tripTotal(t));
+  const cheapest=totals.length?Math.min(...totals):0;
+  if(state.budget&&cheapest>partyB){
+    const suggest=Math.ceil((cheapest/tvB)/50)*50;
+    msg.style.display='flex';
+    msg.innerHTML=ic('alert')+' <div><b>'+money(state.budget)+'/person won\'t cover these trips for your dates.</b> The lowest option here is about '+money(cheapest)+(tvB>1?' ('+money(cheapest/tvB)+'/person)':'')+'. Try raising your budget to ~'+money(suggest)+'/person, picking a closer destination, or shortening the trip.</div>';
+  }else{msg.style.display='none';}
+}
+
+/* ---------------- DETAIL ---------------- */
+function openDetail(idx){
+  state.current=clone(state.options[idx]);state.current.swapCount=0;renderDetail();go('detail');
+  if(API_BASE&&!state.current.live){
+    const t=state.current;const ret=addDays(state.startDate,t.nights);
+    getLive(t.dest,state.startDate,ret).then(live=>{if(live&&applyLive(t,live)){renderDetail();}});
+  }
+}
+function renderDetail(){
+  const t=state.current;const dep=state.startDate;const ret=addDays(dep,t.nights);
+  $('detTitle').innerHTML=ic('pin')+" "+t.dest.city;
+  const tv=state.travelers||1, rm=roomsFor(tv);
+  $('detSub').textContent=t.dest.country+" · "+prettyRange(dep,ret)+" · "+t.nights+" nights · "+tv+(tv>1?" travelers":" traveler")+" · "+(t.live?"live flight & hotel prices":"estimated prices");
+  $('sumDates').textContent=prettyRange(dep,ret)+" · "+tv+(tv>1?" travelers":" traveler");
+  $('flightPick').innerHTML=pickHTML('plane',t.flight.t,state.origin+' ⇄ '+t.dest.city+' · '+t.flight.s,t.flight.p*tv,tv>1?('round-trip · '+tv+' ×'):'round-trip',flightURL(t.dest,dep,ret));
+  $('hotelPick').innerHTML=pickHTML('hotel',t.hotel.t,t.hotel.s+' · '+t.nights+' nights'+(rm>1?' · '+rm+' rooms':''),t.hotel.total,money(t.hotel.p)+'/night'+(rm>1?' × '+rm:''),hotelURL(t.hotel.t,t.dest.city,dep,ret));
+  $('actList').innerHTML=t.acts.length?t.acts.map((a,i)=>pickHTML('ticket',a.t,a.s,a.p*tv,tv>1?(money(a.p)+' pp'):'per person',actURL(a.t,t.dest.city),i)).join('')
+    :'<div style="padding:18px 20px;color:var(--mut);font-size:14px">No activities yet — tap “Add / browse”.</div>';
+  updateSummary();
+  renderGoodToKnow(t,dep,ret);
+  renderSwapCap();
+}
+function renderSwapCap(){
+  const el=$('swapCapLine');if(!el||!state.current)return;
+  const used=state.current.swapCount||0;
+  if(state.member){el.className='swap-cap unlimited';el.innerHTML=ic('check')+' Unlimited flight/hotel/activity swaps — Roam+ member perk';}
+  else{
+    const left=Math.max(0,FREE_SWAP_LIMIT-used);
+    el.className='swap-cap';
+    el.innerHTML=(left>0?left+' free swap'+(left===1?'':'s')+' left on this trip':'Free swap limit reached for this trip')+' · <button class="linktxt" onclick="go(\'premium\')">go unlimited with Roam+</button>';
+  }
+}
+function pickHTML(e,t,s,price,sub,link,actIdx){
+  const rm=actIdx!==undefined?`<button class="btn ghost tiny" style="margin-left:8px" onclick="removeAct(${actIdx})">Remove</button>`:'';
+  return `<div class="pick"><div class="thumb">${ic(e)}</div>
+    <div class="info"><div class="t">${t}</div>
+      <div class="s">${s} · <a href="${link}" target="_blank" rel="noopener">View / book ↗</a>${rm}</div></div>
+    <div class="pr">${money(price)}<small>${sub}</small></div></div>`;
+}
+function removeAct(i){state.current.acts.splice(i,1);renderDetail();}
+function updateSummary(){
+  const t=state.current;const tv=state.travelers||1;const partyBudget=state.budget*tv;
+  const fl=t.flight.p*tv;const actSum=t.acts.reduce((s,a)=>s+a.p*tv,0);
+  const fee=state.member?0:BOOKING_FEE;
+  const total=fl+t.hotel.total+actSum+fee;
+  $('sFlight').textContent=money(fl);$('sHotel').textContent=money(t.hotel.total);
+  $('sAct').textContent=money(actSum);
+  $('sFeeLabel').textContent=state.member?'Booking-assistance fee — waived (Roam+)':'Booking-assistance fee';
+  $('sFee').textContent=money(fee);
+  $('sFeeRow').style.color=state.member?'var(--good)':'';
+  $('sTotal').textContent=money(total);
+  if(tv>1){
+    $('ppRow').style.display='flex';$('sPerPerson').textContent=money(total/tv)+' (per person)';
+    $('sumNote').style.display='block';$('sumNote').textContent='Total is for '+tv+' travelers. Budget '+money(state.budget)+'/person × '+tv+' = '+money(partyBudget)+'. Hotels assume 2 people per room ('+roomsFor(tv)+' room'+(roomsFor(tv)>1?'s':'')+').';
+  }else{$('ppRow').style.display='none';$('sumNote').style.display='none';}
+  $('budgetLabel').textContent=tv>1?('Budget '+money(state.budget)+'/person ('+money(partyBudget)+' total)'):('Budget '+money(state.budget));
+  $('barFill').style.width=Math.min(100,total/partyBudget*100)+'%';
+  $('bar').classList.toggle('over',total>partyBudget);
+  const left=partyBudget-total;const ll=$('leftLabel');
+  if(left>=0){ll.textContent=money(left)+' left';ll.style.color='var(--good)';}
+  else{ll.textContent=money(-left)+' over budget';ll.style.color='var(--coral-d)';}
+}
+
+/* ---------------- GOOD TO KNOW: weather · flexible dates · entry/visa ---------------- */
+const PASSPORTS=['United States','Canada','United Kingdom','Ireland','Australia','New Zealand','Germany','France','Spain','Italy','Netherlands','Portugal','Mexico','Brazil','India','China','Japan','South Korea','Nigeria','South Africa','United Arab Emirates','Other'];
+function lastYearISO(d){return (d.getFullYear()-1)+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function renderGoodToKnow(t,dep,ret){
+  loadWeather(t.dest.city,dep);
+  $('flexBox').innerHTML=API_BASE
+    ? '<b>Flexible on dates?</b> Nearby departure dates are often cheaper. <button class="flexbtn" onclick="checkFlexDates()">Check nearby dates</button><div id="flexResults" style="margin-top:6px"></div>'
+    : '<b>Flexible on dates?</b> Run the live server to compare nearby departure dates for cheaper flights.';
+  const country=t.dest.country||t.dest.city;
+  const pp=window.__passport||'United States';
+  const opts=PASSPORTS.map(c=>`<option ${c===pp?'selected':''}>${c}</option>`).join('');
+  $('entryBox').innerHTML=`<b>Entry &amp; visa</b> — for <select id="passportSel" onchange="setPassport()">${opts}</select> passport holders visiting <b>${country}</b>. `+
+    `<a href="https://www.google.com/search?q=${encodeURIComponent('visa entry requirements for '+pp+' citizens visiting '+country)}" target="_blank" rel="noopener">Check requirements ↗</a> · `+
+    `passport should be valid 6+ months past your trip. Always confirm with the official embassy/consulate.`;
+  const perkBox=$('plusPerkBox');
+  if(perkBox)perkBox.innerHTML=state.member
+    ? `<b>Roam+ perks active</b> — price-drop protection (credited if this fare or rate drops after booking) and priority human support.`
+    : `<b>Roam+ members</b> get price-drop protection (a credit if the fare or rate drops after booking) and priority support. <button class="linktxt" onclick="go('premium')">Learn more →</button>`;
+}
+function setPassport(){window.__passport=$('passportSel').value;const t=state.current;renderGoodToKnow(t,state.startDate,addDays(state.startDate,t.nights));}
+async function loadWeather(city,dep){
+  const box=$('weatherBox');box.textContent='Loading typical weather…';
+  try{
+    const g=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name='+encodeURIComponent(city));
+    const loc=((await g.json()).results||[])[0];if(!loc)throw 0;
+    const ret=addDays(dep,Math.max(1,state.current?state.current.nights:4));
+    const s=lastYearISO(dep),e=lastYearISO(ret);
+    const w=await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${loc.latitude}&longitude=${loc.longitude}&start_date=${s}&end_date=${e}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&temperature_unit=fahrenheit&timezone=auto`);
+    const d=(await w.json()).daily;if(!d||!d.temperature_2m_max)throw 0;
+    const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+    const hi=Math.round(avg(d.temperature_2m_max)),lo=Math.round(avg(d.temperature_2m_min));
+    const rainy=d.precipitation_sum.filter(p=>p>1).length;const mon=dep.toLocaleDateString('en-US',{month:'long'});
+    box.innerHTML=`<b>Typical weather in ${mon}</b> — around ${hi}°/${lo}°F, ~${rainy} rainy day${rainy===1?'':'s'} over ${d.temperature_2m_max.length} days. <span style="color:var(--mut)">(from last year's ${mon})</span>`;
+  }catch(e){box.innerHTML='<b>Weather</b> — typical conditions aren\'t available for this destination right now.';}
+}
+async function checkFlexDates(){
+  if(!API_BASE)return;const t=state.current;const dep=state.startDate;const box=$('flexResults');
+  if(box)box.innerHTML='<span style="color:var(--mut)">Checking nearby dates…</span>';
+  try{
+    const qs='origin='+encodeURIComponent(originIata().toUpperCase())+'&dest='+encodeURIComponent(t.dest.city)+'&iata='+encodeURIComponent(t.dest.iata||'')+'&depart='+isoDate(dep)+'&nights='+t.nights;
+    const j=await (await fetch(API_BASE+'/flexdates?'+qs)).json();
+    if(!j.options||!j.options.length){box.innerHTML='<span style="color:var(--mut)">No nearby fares found.</span>';return;}
+    const base=(j.options.find(o=>o.offset===0)||{}).price||Math.min(...j.options.map(o=>o.price));
+    const cheapest=Math.min(...j.options.map(o=>o.price));
+    box.innerHTML='<div class="flexgrid">'+j.options.map(o=>{
+      const lbl=new Date(o.date+'T12:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      const save=base-o.price;const best=o.price===cheapest&&save>0;
+      return `<div class="flexday ${best?'best':''}"><div class="fd">${lbl}</div><div class="fp">${money(o.price)}</div>${save>0?`<div class="fs">save ${money(save)}</div>`:(o.offset===0?'<div class="fs" style="color:var(--mut)">your date</div>':'')}</div>`;
+    }).join('')+'</div>'+(cheapest<base?`<div style="margin-top:7px;font-weight:700;color:var(--good)">Cheapest nearby date saves ${money(base-cheapest)}/person on flights.</div>`:'<div style="margin-top:7px;color:var(--mut)">Your date is already the cheapest nearby.</div>');
+  }catch(e){box.innerHTML='<span style="color:var(--mut)">Couldn\'t check nearby dates.</span>';}
+}
+
+/* ---------------- SWAP / BROWSE ---------------- */
+let swapKind=null;
+function openSwap(kind){
+  swapKind=kind;const t=state.current;const d=t.dest;const dep=state.startDate;const ret=addDays(dep,t.nights);
+  $('swapTitle').textContent=kind==='flight'?'Choose a flight':kind==='hotel'?'Choose a hotel':'Add activities';
+  let items=kind==='flight'?d.flights:kind==='hotel'?d.hotels:d.acts;
+  const body=$('swapBody');body.innerHTML='';
+  items.forEach((it,i)=>{
+    const isHotel=kind==='hotel';const priceTxt=isHotel?money(it.p)+'/night':money(it.p);
+    let selected=false;
+    if(kind==='flight')selected=t.flight.t===it.t;
+    if(kind==='hotel')selected=t.hotel.t===it.t;
+    if(kind==='activity')selected=t.acts.some(a=>a.t===it.t);
+    const prev=kind==='flight'?flightURL(d,dep,ret):kind==='hotel'?hotelURL(it.t,d.city,dep,ret):actURL(it.t,d.city);
+    const sub=kind==='flight'?(state.origin+' ⇄ '+d.city+' · '+it.s):it.s;
+    const el=document.createElement('div');el.className='alt'+(selected?' sel':'');
+    el.innerHTML=`<div class="thumb">${kind==='flight'?ic('plane'):kind==='hotel'?ic('hotel'):ic('ticket')}</div>
+      <div class="info"><div class="t">${it.t}</div><div class="s">${sub} · <a href="${prev}" target="_blank" rel="noopener">preview ↗</a></div></div>
+      <div class="pr">${priceTxt}${selected?' ✓':''}</div>`;
+    el.onclick=(ev)=>{if(ev.target.tagName==='A')return;chooseSwap(kind,i);};
+    body.appendChild(el);
+  });
+  $('swapModal').classList.add('open');
+}
+function chooseSwap(kind,i){
+  const t=state.current;const d=t.dest;
+  if(!state.member&&(t.swapCount||0)>=FREE_SWAP_LIMIT){
+    toast('Free plan allows '+FREE_SWAP_LIMIT+' swaps per trip — Roam+ removes the cap');
+    closeModal('swapModal');go('premium');
+    return;
+  }
+  if(kind==='flight'){t.flight={...d.flights[i]};}
+  else if(kind==='hotel'){const h=d.hotels[i];t.hotel={...h,total:h.p*t.nights};}
+  else{const a=d.acts[i];const idx=t.acts.findIndex(x=>x.t===a.t);
+    if(idx>=0){t.acts.splice(idx,1);toast('Removed '+a.t);}else{t.acts.push({...a});toast('Added '+a.t);}}
+  t.swapCount=(t.swapCount||0)+1;
+  renderDetail();
+  if(kind==='activity')openSwap('activity');else closeModal('swapModal');
+}
+function closeModal(id){$(id).classList.remove('open');}
+
+/* ---------------- ADD TRIP TO ITINERARY ---------------- */
+function bookTrip(){
+  const t=state.current;const dep=state.startDate;const N=t.nights;const ret=addDays(dep,N);
+  const numDays=N+1;const days=[];
+  for(let i=0;i<numDays;i++)days.push({date:addDays(dep,i),events:[]});
+  const tv=state.travelers||1, rm=roomsFor(tv);
+  days[0].events.push({e:'plane',t:'Round-trip flight — '+t.flight.t,s:state.origin+' ⇄ '+t.dest.city+(tv>1?' · '+tv+' travelers':''),site:'Google Flights',link:flightURL(t.dest,dep,ret),cost:t.flight.p*tv,booked:false});
+  days[0].events.push({e:'hotel',t:t.hotel.t,s:'Check in · '+N+' nights'+(rm>1?' · '+rm+' rooms':'')+' · '+t.hotel.s,site:'Booking.com',link:hotelURL(t.hotel.t,t.dest.city,dep,ret),cost:t.hotel.total,booked:false});
+  const mid=Math.max(1,numDays-2);
+  t.acts.forEach((a,i)=>{const di=1+(i%mid);days[di].events.push({e:'ticket',t:a.t,s:a.s+(tv>1?' · '+tv+' people':''),site:'Viator',link:actURL(a.t,t.dest.city),cost:a.p*tv,booked:false});});
+  days[numDays-1].events.push({e:'plane',t:'Departure',s:t.dest.city+' → '+state.origin+' · checkout',info:true});
+  const trip={dest:JSON.parse(JSON.stringify(t.dest)),origin:state.origin,dep,ret,nights:N,dayList:days,budget:state.budget,travelers:tv,fee:state.member?0:BOOKING_FEE,memberAtBooking:state.member};
+  state.trips.push(trip);state.activeTrip=state.trips.length-1;state.booked=trip;
+  renderItinerary();syncTrips();
+  go('itin');toast('Added trip to '+t.dest.city+' — you now have '+state.trips.length+' itinerar'+(state.trips.length>1?'ies':'y'));
+}
+
+/* ---------------- MULTIPLE ITINERARIES ---------------- */
+function setActiveTrip(i){state.activeTrip=i;state.booked=state.trips[i];renderItinerary();window.scrollTo({top:0,behavior:'smooth'});}
+function deleteTrip(i){
+  const name=state.trips[i].dest.city;
+  state.trips.splice(i,1);
+  state.activeTrip=state.trips.length?Math.min(state.activeTrip>i?state.activeTrip-1:state.activeTrip,state.trips.length-1):-1;
+  state.booked=state.activeTrip>=0?state.trips[state.activeTrip]:null;
+  renderItinerary();syncTrips();toast('Removed trip to '+name);
+}
+function renderTripTabs(){
+  const wrap=$('tripTabs');wrap.innerHTML='';
+  state.trips.forEach((tr,i)=>{
+    const pill=document.createElement('button');
+    pill.className='trip-pill'+(i===state.activeTrip?' on':'');
+    pill.innerHTML=`<span style="display:inline-flex;align-items:center;gap:6px">${ic('pin')}${tr.dest.city}</span><span class="x" title="Remove this trip">×</span>`;
+    pill.onclick=(e)=>{if(e.target.closest('.x')){e.stopPropagation();deleteTrip(i);}else setActiveTrip(i);};
+    wrap.appendChild(pill);
+  });
+  const add=document.createElement('button');
+  add.className='trip-pill add';add.textContent='+ Plan another trip';
+  add.onclick=()=>go('home');
+  wrap.appendChild(add);
+}
+
+/* ---------------- ITINERARY RENDER ---------------- */
+function renderItinerary(){
+  if(!state.trips.length){$('itinEmpty').style.display='block';$('itinContent').style.display='none';$('itinBadge').style.display='none';return;}
+  if(state.activeTrip<0||state.activeTrip>=state.trips.length)state.activeTrip=0;
+  const b=state.booked=state.trips[state.activeTrip];
+  if(!b||!b.dest||!Array.isArray(b.dayList)){
+    // malformed/older saved trip — don't crash the page, just drop it from view
+    $('itinEmpty').style.display='block';$('itinContent').style.display='none';$('itinBadge').style.display='none';
+    console.error('Skipped rendering a trip with an unexpected shape:',b);
+    return;
+  }
+  $('itinEmpty').style.display='none';$('itinContent').style.display='block';
+  $('itinBadge').textContent=state.trips.length;$('itinBadge').style.display='inline-block';
+  renderTripTabs();
+  $('itinDest').innerHTML=ic('pin')+' '+(b.dest.city||'');
+  $('itinDates').textContent=(b.dest.country||'')+' · '+prettyRange(b.dep,b.ret)+' · '+b.nights+' nights'+((b.travelers||1)>1?' · '+b.travelers+' travelers (hotels assume 2 per room)':'');
+  let total=0,bookable=0,done=0;
+  b.dayList.forEach(d=>(d.events||[]).forEach(ev=>{if(ev.info)return;total+=(ev.cost||0);bookable++;if(ev.booked||ev.ext)done++;}));
+  const fee=b.fee||0;total+=fee;
+  $('itinTotal').innerHTML=money(total)+((b.travelers||1)>1?' <span style="font-size:12px;font-weight:600;opacity:.85">('+money(total/b.travelers)+'/person)</span>':'');
+  const pb=(b.budget||0)*(b.travelers||1);
+  const left=pb-total;
+  $('itinLeft').textContent=b.budget?(left>=0?money(left)+' under':money(-left)+' over'):'—';
+  $('itinCount').textContent=done+' / '+bookable;
+  const feeNote=$('itinFeeNote');
+  if(feeNote)feeNote.textContent=fee>0
+    ? 'Includes '+money(fee)+' booking-assistance fee (waived with Roam+)'
+    : (b.memberAtBooking?'Booking-assistance fee waived — Roam+ member':'');
+  const dl=$('dayList');dl.innerHTML='';
+  const sel=$('extDay');sel.innerHTML='';
+  b.dayList.forEach((d,i)=>{const o=document.createElement('option');o.value=i;o.textContent='Day '+(i+1)+' · '+prettyDate(d.date);sel.appendChild(o);});
+  const last=b.dayList.length-1;
+  b.dayList.forEach((d,i)=>{
+    const day=document.createElement('div');day.className='day';
+    day.innerHTML=`<div class="day-h"><span class="num">${i+1}</span>Day ${i+1}
+        <span class="day-ctrl">
+          <span class="dt">${prettyDate(d.date)}</span>
+          <button class="mvbtn" title="Move this day earlier" onclick="moveDay(${i},-1)" ${i===0?'disabled':''}>↑</button>
+          <button class="mvbtn" title="Move this day later" onclick="moveDay(${i},1)" ${i===last?'disabled':''}>↓</button>
+        </span></div>`+
+      (d.events.length?d.events.map((ev,j)=>evHTML(ev,i,j,b.dayList.length)).join('')
+        :'<div class="ev"><div class="c"><div class="s" style="color:var(--mut)">Free day — add something!</div></div></div>')+
+      `<div class="day-foot"><button class="addact" onclick="openActivityPicker(${i})">${ic('plus')} Add activity</button></div>`;
+    dl.appendChild(day);
+  });
+}
+function evHTML(ev,di,ei,numDays){
+  const cost=ev.cost?` · ${money(ev.cost)}`:'';
+  if(ev.info){return `<div class="ev"><div class="e">${ic(ev.e)}</div><div class="c"><div class="t">${ev.t}</div><div class="s">${ev.s}</div></div><span class="tag info">Info</span></div>`;}
+  const lastDay=numDays-1;
+  const mv=`<span class="ev-mv">
+    <button class="mvbtn" title="Move to previous day" onclick="moveEvent(${di},${ei},-1)" ${di===0?'disabled':''}>↑</button>
+    <button class="mvbtn" title="Move to next day" onclick="moveEvent(${di},${ei},1)" ${di===lastDay?'disabled':''}>↓</button>
+  </span>`;
+  let tag,acts='';
+  const del=`<button class="del" onclick="deleteEvent(${di},${ei})">${ic('trash')} Delete</button>`;
+  if(ev.ext){
+    tag='<span class="tag ext">✎ Added by you</span>';
+    acts=(ev.link?`<a class="viewlink" href="${ev.link}" target="_blank" rel="noopener">Open ↗</a>`:'')+del;
+  }else if(ev.booked){
+    tag='<span class="tag book">✓ Booked</span>';
+    acts=`<a class="viewlink" href="${ev.link}" target="_blank" rel="noopener">View booking ↗</a>`+del;
+  }else{
+    tag='<span class="tag todo">○ Not booked</span>';
+    acts=`<button class="bookbtn" onclick="bookEvent(${di},${ei})">Book on ${ev.site} ↗</button>`+del;
+  }
+  return `<div class="ev"><div class="e">${ic(ev.e)}</div>
+    <div class="c"><div class="t">${ev.t}</div><div class="s">${ev.s}${cost}</div>
+      <div class="ev-acts">${acts}</div></div>${mv}${tag}</div>`;
+}
+/* ---------------- ITINERARY EDITING ---------------- */
+function moveDay(i,dir){
+  const list=state.booked.dayList;const j=i+dir;
+  if(j<0||j>=list.length)return;
+  // dates stay fixed to their slot; swap each day's plan so the itinerary reorders chronologically
+  const tmp=list[i].events;list[i].events=list[j].events;list[j].events=tmp;
+  renderItinerary();syncTrips();toast('Swapped Day '+(i+1)+' and Day '+(j+1));
+}
+function moveEvent(di,ei,dir){
+  const list=state.booked.dayList;const dj=di+dir;
+  if(dj<0||dj>=list.length)return;
+  const ev=list[di].events.splice(ei,1)[0];
+  list[dj].events.push(ev);
+  renderItinerary();syncTrips();toast('Moved “'+ev.t+'” to Day '+(dj+1));
+}
+
+/* ---------------- BOOK + CONFIRM FLOW ---------------- */
+function bookEvent(di,ei){
+  const ev=state.booked.dayList[di].events[ei];
+  window.open(ev.link,'_blank','noopener');
+  state.pending={di,ei};
+  $('confirmTitle').textContent='Did you book it?';
+  $('confirmText').innerHTML=`We opened <b>${ev.site}</b> for “${ev.t}”. Once you finish booking there, confirm it here and we'll track it in your itinerary.`;
+  $('confirmModal').classList.add('open');
+}
+function confirmYes(){
+  if(state.pending){const{di,ei}=state.pending;state.booked.dayList[di].events[ei].booked=true;state.pending=null;}
+  closeModal('confirmModal');renderItinerary();syncTrips();toast('Booking confirmed & saved');
+}
+function deleteEvent(di,ei){
+  const ev=state.booked.dayList[di].events[ei];
+  state.booked.dayList[di].events.splice(ei,1);
+  renderItinerary();syncTrips();toast('Removed “'+ev.t+'”');
+}
+
+/* ---------------- EXTERNAL BOOKING ---------------- */
+function openExternal(){
+  if(state.activeTrip<0||!state.booked){
+    const dep=state.startDate||addDays(todayNoon(),45);state.startDate=dep;
+    const days=[];for(let i=0;i<5;i++)days.push({date:addDays(dep,i),events:[]});
+    const trip={dest:{city:'My Trip',country:'Custom itinerary',emoji:'🧳'},origin:state.origin||'',dep,ret:addDays(dep,4),nights:4,dayList:days,budget:state.budget||parseInt($('budget').value)||0};
+    state.trips.push(trip);state.activeTrip=state.trips.length-1;state.booked=trip;
+    renderItinerary();
+  }
+  $('extModal').classList.add('open');
+}
+/* ---------------- EXPORT / SHARE ---------------- */
+function exportPDF(){
+  if(state.activeTrip<0){toast('Add a trip first');return;}
+  go('itin');
+  setTimeout(()=>window.print(),60);   // user picks "Save as PDF" in the print dialog
+}
+function shareTrip(){
+  const b=state.booked;if(!b){toast('Add a trip first');return;}
+  const payload={v:1,t:{
+    dest:{city:b.dest.city,country:b.dest.country},origin:b.origin,
+    dep:isoDate(b.dep),ret:isoDate(b.ret),nights:b.nights,budget:b.budget,travelers:b.travelers||1,
+    dayList:b.dayList.map(d=>({date:isoDate(d.date),events:d.events}))
+  }};
+  const enc=btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const url=location.origin+location.pathname+'#t='+enc;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>toast('Share link copied to clipboard'),()=>prompt('Copy your share link:',url));
+  }else{prompt('Copy your share link:',url);}
+}
+function loadSharedFromHash(){
+  const m=(location.hash||'').match(/#t=(.+)$/);if(!m)return;
+  try{
+    const data=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    const s=data&&data.t;if(!s)return;
+    const trip={dest:s.dest,origin:s.origin,dep:new Date(s.dep+'T12:00'),ret:new Date(s.ret+'T12:00'),
+      nights:s.nights,budget:s.budget,travelers:s.travelers||1,
+      dayList:(s.dayList||[]).map(d=>({date:new Date(d.date+'T12:00'),events:d.events||[]}))};
+    state.trips.push(trip);state.activeTrip=state.trips.length-1;state.booked=trip;
+    history.replaceState(null,'',location.pathname);
+    renderItinerary();go('itin');toast('Loaded shared itinerary');
+  }catch(e){}
+}
+
+/* ---------------- ADD ACTIVITY ---------------- */
+function openActivityPicker(preDay){
+  if(state.activeTrip<0||!state.booked){openExternal();return;}
+  const b=state.booked;const city=b.dest.city||'';
+  const sel=$('actDay');sel.innerHTML='';
+  b.dayList.forEach((d,i)=>{const o=document.createElement('option');o.value=i;o.textContent='Day '+(i+1)+' · '+prettyDate(d.date);sel.appendChild(o);});
+  if(preDay!=null&&preDay>=0&&preDay<b.dayList.length)sel.value=preDay;
+  $('actModalTitle').textContent='Add an activity in '+(city||'your trip');
+  const acts=b.dest.acts||[];
+  $('actOptions').innerHTML=acts.length?acts.map((a,i)=>`<div class="act-pick"><div class="thumb">${ic('ticket')}</div>
+      <div class="info"><div class="t">${a.t}</div><div class="s">${a.s||''} · <a href="${actURL(a.t,city)}" target="_blank" rel="noopener">View / book ↗</a></div></div>
+      <div class="pr">${money(a.p)}${(b.travelers||1)>1?' pp':''}</div>
+      <button class="btn tiny" onclick="addActivityToTrip(${i})">Add</button></div>`).join('')
+    :'<p class="note" style="text-align:left;margin:0 0 10px">No suggested activities for this trip yet — browse options below.</p>';
+  $('actBrowse').innerHTML=city?`<a href="${viatorSearch(city)}" target="_blank" rel="noopener" style="font-size:13px;font-weight:700;color:var(--teal-d);text-decoration:none">Browse more things to do in ${city} on Viator ↗</a>`:'';
+  $('actModal').classList.add('open');
+}
+function addActivityToTrip(i){
+  const b=state.booked;const a=(b.dest.acts||[])[i];if(!a)return;
+  const tv=b.travelers||1;const day=parseInt($('actDay').value)||0;
+  b.dayList[day].events.push({e:'ticket',t:a.t,s:(a.s||'Activity')+(tv>1?' · '+tv+' people':''),site:'Viator',link:actURL(a.t,b.dest.city||''),cost:a.p*tv,booked:false});
+  renderItinerary();syncTrips();
+  closeModal('actModal');go('itin');
+  toast('Added “'+a.t+'” to Day '+(day+1));
+}
+function addExternal(){
+  const [e,kind]=$('extType').value.split('|');
+  const name=$('extName').value.trim()||kind;
+  const day=parseInt($('extDay').value)||0;
+  const cost=parseFloat($('extCost').value)||0;
+  let link=$('extLink').value.trim();
+  if(link&&!/^https?:\/\//.test(link))link='https://'+link;
+  state.booked.dayList[day].events.push({e,t:name,s:kind+' you booked',link,ext:true,cost});
+  $('extName').value='';$('extCost').value='';$('extLink').value='';
+  renderItinerary();syncTrips();closeModal('extModal');go('itin');
+  toast('Added to Day '+(day+1));
+}
+
+/* ---------------- ACCOUNTS ---------------- */
+async function api(pathname,opts){return fetch(API_BASE+pathname,Object.assign({headers:{'Content-Type':'application/json'}},opts));}
+function setAuthTab(mode){
+  state.authMode=mode;
+  $('tabLogin').classList.toggle('on',mode==='login');
+  $('tabSignup').classList.toggle('on',mode==='signup');
+  $('signupFields').style.display=mode==='signup'?'block':'none';
+  $('authSubmit').textContent=mode==='signup'?'Create account':'Log in';
+  $('authError').style.display='none';
+}
+function authErr(msg){const e=$('authError');e.textContent=msg;e.style.display='block';}
+async function submitAuth(){
+  if(!API_BASE){authErr('Start the server (npm start) to use accounts.');return;}
+  const email=$('auEmail').value.trim(),pass=$('auPass').value;
+  $('authError').style.display='none';
+  const btn=$('authSubmit');if(btn.disabled)return;btn.disabled=true; // guard against double-submit
+  let r,j;
+  try{
+    let body,path;
+    if(state.authMode==='signup'){path='/signup';body={name:$('suName').value.trim(),email,password:pass};}
+    else{path='/login';body={email,password:pass};}
+    r=await api(path,{method:'POST',body:JSON.stringify(body)});
+    j=await r.json();
+  }catch(e){authErr('Could not reach the server.');btn.disabled=false;return;}
+  btn.disabled=false;
+  if(!r.ok){authErr(j.error||'Something went wrong.');return;}
+  if(j.needsConfirmation){authErr(j.error);setAuthTab('login');return;}
+  // Login itself succeeded at this point — everything below is just UI/display,
+  // so a hiccup here is logged (not shown as a login error), and we still
+  // navigate off the login page since the user IS signed in.
+  setUser(j.user);
+  $('auPass').value='';
+  try{
+    // merge: if account has saved trips, load them; otherwise push local trips up
+    if(j.user.trips&&j.user.trips.length){state.trips=j.user.trips;state.activeTrip=0;state.booked=state.trips[0];renderItinerary();}
+    else if(state.trips.length){syncTrips();}
+  }catch(e){console.error('Post-login trip-load error (you are still signed in):',e);}
+  toast('Signed in as '+j.user.name);
+  go(state.trips.length?'itin':'home');
+}
+async function logout(){
+  try{await api('/logout',{method:'POST'});}catch(e){}
+  setUser(null);toast('Logged out');renderAccount();
+}
+function setUser(u){
+  state.user=u;
+  $('navAccountLabel').textContent=u?u.name.split(' ')[0]:'Account';
+}
+function renderAccount(){
+  const noServer=!API_BASE;
+  $('acctServerNote').style.display=noServer?'flex':'none';
+  $('authSubmit').disabled=noServer;
+  const pl=$('acctPlanLine');
+  if(pl)pl.innerHTML=state.member
+    ? '<b>'+ic('sparkle')+' Roam+ member</b> — fees waived, unlimited swaps, ad-free results. <button class="linktxt" onclick="go(\'premium\')">Manage</button>'
+    : '<b>Free plan</b> — <button class="linktxt" onclick="go(\'premium\')">Upgrade to Roam+ ('+MEMBER_PRICE+'/year)</button>';
+  if(state.user){
+    $('acctLoggedOut').style.display='none';$('acctLoggedIn').style.display='block';
+    $('acctName').innerHTML=ic('user')+' '+state.user.name;
+    $('acctEmail').textContent=state.user.email;
+    $('acctTrips').textContent=state.trips.length;
+  }else{
+    $('acctLoggedOut').style.display='block';$('acctLoggedIn').style.display='none';
+    setAuthTab(state.authMode);
+  }
+}
+async function checkAuth(){
+  if(!API_BASE){renderAccount();return;}
+  try{
+    const r=await api('/me');const j=await r.json();
+    if(j.user){setUser(j.user);
+      if(j.user.trips&&j.user.trips.length){state.trips=j.user.trips;state.activeTrip=0;state.booked=state.trips[0];renderItinerary();}
+    }
+  }catch(e){}
+}
+let _syncT=null;
+function syncTrips(){
+  if(!state.user||!API_BASE)return;
+  clearTimeout(_syncT);
+  _syncT=setTimeout(()=>{
+    api('/trips',{method:'PUT',body:JSON.stringify({trips:state.trips})}).catch(()=>{});
+  },600);
+}
+async function saveTrips(showToast){
+  if(!state.user){toast('Log in first to save');go('account');return;}
+  try{await api('/trips',{method:'PUT',body:JSON.stringify({trips:state.trips})});if(showToast)toast('Itineraries saved to your account');}
+  catch(e){if(showToast)toast('Could not save — is the server running?');}
+}
+
+document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+// date starts blank — "AI decides" scans for the cheapest dates at search time (see pickBestDepartDate)
+hydrateIcons();
+updateMemberUI();
+setupAutocomplete('origin','acOrigin');
+setupAutocomplete('dest','acDest');
+renderItinerary();
+checkAuth();
+loadSharedFromHash();
+</script>
+</body>
+</html>
