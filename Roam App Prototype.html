@@ -298,6 +298,71 @@
   .swap-cap{font-size:11.5px;color:var(--mut);padding:0 20px 10px}
   .swap-cap.unlimited{color:var(--good);font-weight:700}
   .swap-cap a,.swap-cap button.linktxt{color:var(--teal-d);font-weight:700;text-decoration:underline;background:none;border:none;font-size:11.5px;cursor:pointer;padding:0}
+
+  /* ---------------- MOBILE ---------------- */
+  .lbl-short{display:none}
+  @media(max-width:600px){
+    .wrap{padding:0 14px}
+    .view{padding:20px 0 64px}
+
+    /* nav: shortened labels + tighter spacing so all 4 tabs fit on one line
+       with no wrapping or side-scrolling; overflow-x is a safety net only. */
+    nav{height:auto;min-height:54px;padding:8px 0;gap:4px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    nav::-webkit-scrollbar{display:none}
+    .logo{font-size:17px;flex-shrink:0;gap:6px}
+    .logo span{font-size:18px}
+    .logo-mark{width:24px;height:24px}
+    .navbtn{padding:7px 9px;font-size:12px;white-space:nowrap;flex-shrink:0}
+    .navbtn .badge{font-size:10px;padding:1px 5px;margin-left:3px}
+    .lbl-full{display:none}
+    .lbl-short{display:inline}
+    #navAccountLabel{display:none} /* icon-only on mobile — full name still shows on the Account page */
+
+    .hero{padding:26px 20px;border-radius:18px}
+    .hero h1{font-size:24px}
+    .hero p{font-size:14px;margin-bottom:18px}
+    .panel{padding:16px;border-radius:14px}
+    .budget-row .cur,.budget-row input{font-size:21px}
+
+    /* pair up the secondary trip-form fields (2 per row) instead of stacking
+       Destination / Depart date / Trip length / Travelers as 4 long rows */
+    .grid3{grid-template-columns:1fr 1fr;column-gap:10px}
+
+    .sec-head h2{font-size:21px}
+    .sec-head{margin-bottom:14px}
+    .how{grid-template-columns:1fr;gap:12px}
+
+    .plus-hero{padding:24px 18px;border-radius:18px}
+    .plus-hero h1{font-size:23px}
+    .plus-price .amt{font-size:30px}
+
+    .detail-grid{gap:16px}
+    .block-h{padding:13px 16px}
+    .pick{padding:13px 16px;gap:10px}
+    .pick .thumb{width:44px;height:44px;font-size:20px}
+    .summary{position:static}
+
+    .itin-head{padding:20px 18px;border-radius:16px}
+    .itin-head h2{font-size:21px}
+    .itin-head .stats{gap:16px}
+
+    .day-h{padding:12px 14px}
+    .ev{padding:12px 14px;gap:10px}
+    .ev .c .t{font-size:14px}
+    .day-foot{padding:9px 14px}
+
+    .modal{border-radius:16px}
+    .modal-h{padding:16px 18px}
+    .modal-body{padding:14px 18px}
+    .act-pick{padding:11px 12px;gap:10px}
+
+    .cmp-table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
+    .cmp-table th,.cmp-table td{padding:10px 12px;font-size:12px}
+
+    .btn{font-size:15px;padding:13px 20px}
+    .empty{padding:48px 16px}
+    .itin-head .stats{row-gap:8px}
+  }
 </style>
 </head>
 <body>
@@ -317,10 +382,10 @@
       <path d="M18 21 L32 9 L21.4 31" fill="none" stroke="#db2777" stroke-opacity=".35" stroke-width="1" stroke-linejoin="round"/>
     </svg>
     Roam</div>
-  <button class="navbtn active" id="nav-home" onclick="goPlan()">Plan a trip</button>
-  <button class="navbtn" id="nav-itin" onclick="go('itin')">My Itinerary <span class="badge" id="itinBadge" style="display:none">1</span></button>
+  <button class="navbtn active" id="nav-home" onclick="goPlan()"><span class="lbl-full">Plan a trip</span><span class="lbl-short">Plan</span></button>
+  <button class="navbtn" id="nav-itin" onclick="go('itin')"><span class="lbl-full">My Itinerary</span><span class="lbl-short">Trips</span> <span class="badge" id="itinBadge" style="display:none">1</span></button>
   <button class="navbtn navbtn-plus" id="nav-premium" onclick="go('premium')"><span data-ic="sparkle"></span> Roam+ <span class="badge plus-on" id="memberBadge" style="display:none">Member</span></button>
-  <button class="navbtn" id="nav-account" onclick="go('account')"><span data-ic="user"></span> <span id="navAccountLabel">Account</span></button>
+  <button class="navbtn" id="nav-account" onclick="go('account')"><span data-ic="user"></span> <span id="navAccountLabel" class="lbl-full">Account</span></button>
 </nav></div></header>
 
 <!-- ============ HOME ============ -->
